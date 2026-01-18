@@ -1,0 +1,52 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$PROJECT_DIR/.claude/hooks/send_event.py\" PreToolUse"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$PROJECT_DIR/.claude/hooks/send_event.py\" PostToolUse"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$PROJECT_DIR/.claude/hooks/send_event.py\" Notification"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$PROJECT_DIR/.claude/hooks/send_event.py\" Stop"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "AOD_API_URL": "http://localhost:4000"
+  }
+}
