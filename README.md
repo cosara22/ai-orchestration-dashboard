@@ -91,9 +91,48 @@ Real-time monitoring dashboard for Claude Code sessions.
 
 ## Claude Code Hooks
 
-Configure hooks in `.claude/settings.local.json` to send events to the dashboard.
+### Enable Hooks in This Project
 
-See `.claude/HOOKS_README.md` for setup instructions.
+Copy `settings.local.json` to `settings.json`:
+```bash
+cp .claude/settings.local.json .claude/settings.json
+```
+
+### Enable Hooks in Other Projects
+
+Add the following to your project's `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python /path/to/ai-orchestration-dashboard/.claude/hooks/send_event.py PostToolUse"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "AOD_API_URL": "http://localhost:4000"
+  }
+}
+```
+
+### Available Hooks
+
+| Hook | Event Type | Description |
+|------|------------|-------------|
+| PreToolUse | tool_execution_start | Before tool execution |
+| PostToolUse | tool_execution_end | After tool execution |
+| Notification | notification | Notifications from Claude |
+| Stop | session_end | Session ended |
+
+See `.claude/HOOKS_README.md` for detailed setup instructions.
 
 ## Testing
 

@@ -7,7 +7,7 @@ import { StatusCard } from "@/components/StatusCard";
 import { EventList } from "@/components/EventList";
 import { SessionList } from "@/components/SessionList";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
-import { Activity, RefreshCw } from "lucide-react";
+import { Activity, RefreshCw, AlertTriangle, X } from "lucide-react";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4000/ws";
 
@@ -17,6 +17,9 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
   const [apiStatus, setApiStatus] = useState<"ok" | "error" | "unknown">("unknown");
   const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showError, setShowError] = useState(false);
 
   const handleWSMessage = useCallback((message: any) => {
     if (message.type === "event") {
@@ -50,9 +53,18 @@ export default function DashboardPage() {
       setSessions(sessionsRes.sessions);
       setMetrics(metricsRes);
       setApiStatus("ok");
+      setLastUpdated(new Date());
+      setShowError(false);
+      setErrorMessage(null);
     } catch (error) {
       console.error("Failed to fetch data:", error);
       setApiStatus("error");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to connect to API. Is the backend running?"
+      );
+      setShowError(true);
     } finally {
       setIsLoading(false);
     }
@@ -64,8 +76,33 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return "";
+    return lastUpdated.toLocaleTimeString();
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
+      {/* Error Banner */}
+      {showError && errorMessage && (
+        <div className="bg-red-900/50 border-b border-red-800">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-400" />
+                <span className="text-red-200">{errorMessage}</span>
+              </div>
+              <button
+                onClick={() => setShowError(false)}
+                className="p-1 hover:bg-red-800/50 rounded"
+              >
+                <X className="h-4 w-4 text-red-400" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-gray-800 bg-[#0f0f0f]">
         <div className="container mx-auto px-4 py-4">
@@ -77,6 +114,11 @@ export default function DashboardPage() {
               </h1>
             </div>
             <div className="flex items-center gap-4">
+              {lastUpdated && (
+                <span className="text-xs text-gray-500">
+                  Updated: {formatLastUpdated()}
+                </span>
+              )}
               <ConnectionStatus isConnected={isConnected} apiStatus={apiStatus} />
               <button
                 onClick={fetchData}
