@@ -80,12 +80,13 @@ export interface Task {
 
 export const api = {
   // Events
-  getEvents: (params?: { limit?: number; offset?: number; event_type?: string; project?: string }) => {
+  getEvents: (params?: { limit?: number; offset?: number; event_type?: string; project?: string; session_id?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set("limit", String(params.limit));
     if (params?.offset) searchParams.set("offset", String(params.offset));
     if (params?.event_type) searchParams.set("event_type", params.event_type);
     if (params?.project) searchParams.set("project", params.project);
+    if (params?.session_id) searchParams.set("session_id", params.session_id);
     const query = searchParams.toString();
     return fetchApi<{ events: Event[]; limit: number; offset: number }>(
       `/api/events${query ? `?${query}` : ""}`

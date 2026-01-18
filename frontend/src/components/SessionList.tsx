@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Session } from "@/lib/api";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import { Circle, CheckCircle2, XCircle, X } from "lucide-react";
+import { SessionDetail } from "./SessionDetail";
 
 interface SessionListProps {
   sessions: Session[];
@@ -32,6 +33,7 @@ const statusConfig = {
 
 export function SessionList({ sessions }: SessionListProps) {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
 
   // Filter sessions
   const filteredSessions = useMemo(() => {
@@ -89,6 +91,7 @@ export function SessionList({ sessions }: SessionListProps) {
             return (
               <div
                 key={session.session_id}
+                onClick={() => setSelectedSession(session)}
                 className="flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-3 hover:bg-gray-900 transition-colors cursor-pointer"
               >
                 <div className={cn("rounded-full p-1", config.bgColor)}>
@@ -115,6 +118,13 @@ export function SessionList({ sessions }: SessionListProps) {
           })}
         </div>
       )}
+
+      {/* Session Detail Modal */}
+      <SessionDetail
+        session={selectedSession}
+        isOpen={!!selectedSession}
+        onClose={() => setSelectedSession(null)}
+      />
     </div>
   );
 }

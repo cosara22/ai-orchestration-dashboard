@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { api, Task } from "@/lib/api";
 import { formatRelativeTime, cn } from "@/lib/utils";
+import { useToast } from "@/components/Toast";
+import { TaskDetail } from "@/components/TaskDetail";
 import {
   Plus,
   Circle,
   CheckCircle2,
   Clock,
   XCircle,
-  ChevronUp,
-  ChevronDown,
   Trash2,
   X,
 } from "lucide-react";
@@ -42,6 +42,8 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
     priority: "medium" as "low" | "medium" | "high",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const toast = useToast();
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -76,8 +78,10 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
       setTasks((prev) => [res.task, ...prev]);
       setFormData({ title: "", description: "", priority: "medium" });
       setShowForm(false);
+      toast.success("Task created", `"${res.task.title}" has been added`);
     } catch (error) {
       console.error("Failed to create task:", error);
+      toast.error("Failed to create task", "Please try again");
     } finally {
       setIsSubmitting(false);
     }
@@ -89,17 +93,24 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
       setTasks((prev) =>
         prev.map((t) => (t.task_id === taskId ? updatedTask : t))
       );
+      if (newStatus === "completed") {
+        toast.success("Task completed", `"${updatedTask.title}" marked as done`);
+      }
     } catch (error) {
       console.error("Failed to update task:", error);
+      toast.error("Failed to update task", "Please try again");
     }
   };
 
   const handleDelete = async (taskId: string) => {
+    const task = tasks.find((t) => t.task_id === taskId);
     try {
       await api.deleteTask(taskId);
       setTasks((prev) => prev.filter((t) => t.task_id !== taskId));
+      toast.info("Task deleted", task ? `"${task.title}" has been removed` : undefined);
     } catch (error) {
       console.error("Failed to delete task:", error);
+      toast.error("Failed to delete task", "Please try again");
     }
   };
 
@@ -192,10 +203,12 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
               return (
                 <div
                   key={task.task_id}
-                  className="flex items-start gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-3 hover:bg-gray-900 transition-colors group"
+                  onClick={() => setSelectedTask(task)}
+                  className="flex items-start gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-3 hover:bg-gray-900 transition-colors group cursor-pointer"
                 >
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       const nextStatus =
                         task.status === "pending"
                           ? "in_progress"
@@ -243,7 +256,10 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
                   </div>
 
                   <button
-                    onClick={() => handleDelete(task.task_id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(task.task_id);
+                    }}
                     className="p-1 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Delete task"
                   >
@@ -255,6 +271,22 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
           </div>
         )}
       </div>
+
+      {/* Task Detail Modal */}
+      <TaskDetail
+        task={selectedTask}
+        isOpen={!!selectedTask}
+        onClose={() => setSelectedTask(null)}
+        onUpdate={(updatedTask) => {
+          setTasks((prev) =>
+            prev.map((t) => (t.task_id === updatedTask.task_id ? updatedTask : t))
+          );
+          setSelectedTask(null);
+        }}
+        onDelete={(taskId) => {
+          setTasks((prev) => prev.filter((t) => t.task_id !== taskId));
+        }}
+      />
     </div>
   );
 }

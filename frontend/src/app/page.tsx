@@ -10,6 +10,7 @@ import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { TimelineChart } from "@/components/TimelineChart";
 import { ProjectSelector } from "@/components/ProjectSelector";
 import { TaskPanel } from "@/components/TaskPanel";
+import { ExportButton } from "@/components/ExportButton";
 import { Activity, RefreshCw, AlertTriangle, X } from "lucide-react";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4000/ws";
@@ -122,6 +123,7 @@ export default function DashboardPage() {
                 selectedProject={selectedProject}
                 onProjectChange={setSelectedProject}
               />
+              <ExportButton selectedProject={selectedProject} />
               {lastUpdated && (
                 <span className="text-xs text-gray-500">
                   Updated: {formatLastUpdated()}
