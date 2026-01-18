@@ -90,6 +90,23 @@ Claude Code Hooks を活用したリアルタイムモニタリングダッシ�
 
 ---
 
+### Phase 5: Hooks 統合 - Priority 4 (完了)
+
+**完了日**: 2026-01-19
+
+| 項目 | 状態 | 成果物 |
+|------|------|--------|
+| send_event.py | 完了 | `hooks/send_event.py` |
+| settings.json 設定例 | 完了 | `hooks/settings.json.example` |
+| Windows バッチファイル | 完了 | `hooks/send_event.bat` |
+| イベント並び順修正 | 完了 | `server/src/routes/events.ts` |
+
+**テスト結果**:
+- PostToolUse イベント: 正常受信確認
+- SessionStart イベント: 正常受信確認
+
+---
+
 ## 3. 実装済みコンポーネント一覧
 
 ### 3.1 Frontend (`frontend/src/`)
@@ -172,15 +189,14 @@ ws/
 
 ## 5. ネクストアクション
 
-### 5.1 Priority 4: 運用機能 (未着手)
+### 5.1 Priority 5: 運用機能 (未着手)
 
 | 機能 | 優先度 | 説明 |
 |------|--------|------|
-| Hooks 統合 | High | Claude Code Hooks からのイベント受信設定 |
 | 設定画面 | Medium | ダッシュボード設定 UI |
 | ダークモード切替 | Low | テーマ切替機能 |
 
-### 5.2 Priority 5: 拡張機能 (未着手)
+### 5.2 Priority 6: 拡張機能 (未着手)
 
 | 機能 | 優先度 | 説明 |
 |------|--------|------|
@@ -189,23 +205,30 @@ ws/
 | アラート設定 | Low | 閾値ベースの通知 |
 | API 認証 | Low | Bearer トークン認証 |
 
-### 5.3 推奨実装順序
+### 5.3 Hooks 使用方法
+
+```bash
+# 1. settings.json.example を ~/.claude/settings.json にマージ
+# 2. Claude Code を起動するとイベントが自動送信される
+
+# 手動テスト
+echo '{"session_id":"test"}' | python hooks/send_event.py PostToolUse
+curl http://localhost:4000/api/events?limit=1
+```
+
+### 5.4 推奨実装順序
 
 ```
-1. Hooks 統合 (send_event.py の設置と settings.json 設定)
-   ├── hooks-setup エージェントの活用
-   └── 実際のClaude Codeセッションからのデータ受信テスト
-
-2. 動作確認・デバッグ
+1. 動作確認・デバッグ
    ├── Backend: bun run dev
    ├── Frontend: npm run dev
-   └── E2E テスト
+   └── 実際の Claude Code セッションでの動作確認
 
-3. 設定画面の実装
+2. 設定画面の実装
    ├── 接続設定
    └── 表示設定
 
-4. 追加機能の実装
+3. 追加機能の実装
    └── 優先度に応じて順次実装
 ```
 

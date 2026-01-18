@@ -93,7 +93,7 @@ eventsRouter.get("/", async (c) => {
       params.push(project);
     }
 
-    query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
+    query += " ORDER BY id DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
 
     const events = db.prepare(query).all(...params);

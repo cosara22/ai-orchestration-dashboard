@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Claude Code Hooks設定例 - このファイルを ~/.claude/settings.json にコピーまたはマージしてください",
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": { "tool_name": "*" },
+        "commands": [
+          "python ${CLAUDE_PROJECT_DIR}/hooks/send_event.py PreToolUse"
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": { "tool_name": "*" },
+        "commands": [
+          "python ${CLAUDE_PROJECT_DIR}/hooks/send_event.py PostToolUse"
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "commands": [
+          "python ${CLAUDE_PROJECT_DIR}/hooks/send_event.py SessionStart"
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "commands": [
+          "python ${CLAUDE_PROJECT_DIR}/hooks/send_event.py SessionEnd"
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "commands": [
+          "python ${CLAUDE_PROJECT_DIR}/hooks/send_event.py Notification"
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "commands": [
+          "python ${CLAUDE_PROJECT_DIR}/hooks/send_event.py Stop"
+        ]
+      }
+    ]
+  }
+}
