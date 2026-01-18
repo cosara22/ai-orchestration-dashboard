@@ -16,6 +16,7 @@ import {
 import { Line } from "react-chartjs-2";
 import { api } from "@/lib/api";
 import { BarChart3, RefreshCw } from "lucide-react";
+import { useTheme } from "./ThemeProvider";
 
 // Register Chart.js components
 ChartJS.register(
@@ -36,9 +37,12 @@ interface TimelineData {
 }
 
 export function TimelineChart() {
+  const { theme } = useTheme();
   const [timelineData, setTimelineData] = useState<TimelineData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hours, setHours] = useState(24);
+
+  const isLight = theme === "light";
 
   const fetchTimeline = async () => {
     setIsLoading(true);
@@ -56,6 +60,10 @@ export function TimelineChart() {
     fetchTimeline();
   }, [hours]);
 
+  // Notion-inspired colors
+  const accentColor = isLight ? "#0b6e99" : "#529CCA";
+  const accentColorAlpha = isLight ? "rgba(11, 110, 153, 0.1)" : "rgba(82, 156, 202, 0.15)";
+
   const chartData = {
     labels: timelineData.map((d) => {
       const date = new Date(d.hour);
@@ -66,8 +74,8 @@ export function TimelineChart() {
         label: "Events",
         data: timelineData.map((d) => d.event_count),
         fill: true,
-        borderColor: "rgb(59, 130, 246)",
-        backgroundColor: "rgba(59, 130, 246, 0.1)",
+        borderColor: accentColor,
+        backgroundColor: accentColorAlpha,
         tension: 0.4,
         pointRadius: 2,
         pointHoverRadius: 5,
@@ -83,9 +91,11 @@ export function TimelineChart() {
         display: false,
       },
       tooltip: {
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        titleColor: "#fff",
-        bodyColor: "#fff",
+        backgroundColor: isLight ? "#ffffff" : "#262626",
+        titleColor: isLight ? "#37352f" : "rgba(255, 255, 255, 0.9)",
+        bodyColor: isLight ? "#37352f" : "rgba(255, 255, 255, 0.9)",
+        borderColor: isLight ? "#e9e9e7" : "#3d3d3d",
+        borderWidth: 1,
         padding: 12,
         displayColors: false,
       },
@@ -93,19 +103,19 @@ export function TimelineChart() {
     scales: {
       x: {
         grid: {
-          color: "rgba(75, 85, 99, 0.3)",
+          color: isLight ? "rgba(55, 53, 47, 0.08)" : "rgba(255, 255, 255, 0.08)",
         },
         ticks: {
-          color: "#9ca3af",
+          color: isLight ? "#787774" : "rgba(255, 255, 255, 0.6)",
           maxTicksLimit: 12,
         },
       },
       y: {
         grid: {
-          color: "rgba(75, 85, 99, 0.3)",
+          color: isLight ? "rgba(55, 53, 47, 0.08)" : "rgba(255, 255, 255, 0.08)",
         },
         ticks: {
-          color: "#9ca3af",
+          color: isLight ? "#787774" : "rgba(255, 255, 255, 0.6)",
           stepSize: 1,
         },
         beginAtZero: true,
@@ -114,18 +124,18 @@ export function TimelineChart() {
   };
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-[#0f0f0f]">
-      <div className="border-b border-gray-800 px-4 py-3">
+    <div className="rounded-lg border border-theme bg-theme-card">
+      <div className="border-b border-theme px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-blue-400" />
-            <h2 className="font-semibold text-white">Event Timeline</h2>
+            <h2 className="font-semibold text-theme-primary">Event Timeline</h2>
           </div>
           <div className="flex items-center gap-2">
             <select
               value={hours}
               onChange={(e) => setHours(Number(e.target.value))}
-              className="px-2 py-1 text-xs bg-gray-900 border border-gray-700 rounded text-gray-200 focus:outline-none focus:border-blue-500"
+              className="px-2 py-1 text-xs bg-theme-primary border border-theme rounded text-theme-primary focus:outline-none focus:border-blue-500"
             >
               <option value={6}>Last 6 hours</option>
               <option value={12}>Last 12 hours</option>
@@ -134,10 +144,10 @@ export function TimelineChart() {
             </select>
             <button
               onClick={fetchTimeline}
-              className="p-1 hover:bg-gray-800 rounded transition-colors"
+              className="p-1 hover:bg-theme-card rounded transition-colors"
               title="Refresh"
             >
-              <RefreshCw className={`h-3 w-3 text-gray-400 ${isLoading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3 w-3 text-theme-secondary ${isLoading ? "animate-spin" : ""}`} />
             </button>
           </div>
         </div>
@@ -148,7 +158,7 @@ export function TimelineChart() {
             <RefreshCw className="h-6 w-6 animate-spin text-blue-400" />
           </div>
         ) : timelineData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[200px] text-gray-500">
+          <div className="flex flex-col items-center justify-center h-[200px] text-theme-secondary">
             <BarChart3 className="h-8 w-8 mb-2 opacity-30" />
             <p className="text-sm">No data available</p>
           </div>

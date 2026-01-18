@@ -53,17 +53,17 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
       {/* Modal */}
       <div
         className={cn(
-          "relative w-full mx-4 bg-[#0f0f0f] border border-gray-800 rounded-lg shadow-xl",
+          "relative w-full mx-4 bg-theme-card border border-theme rounded-lg shadow-xl",
           "animate-in zoom-in-95 fade-in duration-200",
           sizeClasses[size]
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-theme">
+          <h2 className="text-lg font-semibold text-theme-primary">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+            className="p-1 text-theme-secondary hover:text-theme-primary hover:bg-theme-card rounded transition-colors"
           >
             <X className="h-5 w-5" />
           </button>

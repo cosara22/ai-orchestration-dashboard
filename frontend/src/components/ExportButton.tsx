@@ -131,7 +131,7 @@ export function ExportButton({ selectedProject }: ExportButtonProps) {
         disabled={isExporting}
         className={cn(
           "flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors",
-          "bg-gray-800 text-gray-200 hover:bg-gray-700",
+          "bg-theme-primary border border-theme text-theme-primary hover:bg-theme-card",
           "disabled:opacity-50 disabled:cursor-not-allowed"
         )}
       >
@@ -143,23 +143,23 @@ export function ExportButton({ selectedProject }: ExportButtonProps) {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-20 w-48 rounded-md border border-gray-700 bg-gray-900 shadow-lg">
+          <div className="absolute right-0 top-full mt-1 z-20 w-48 rounded-md border border-theme bg-theme-card shadow-lg">
             <div className="py-1">
               <button
                 onClick={() => handleExport("events")}
-                className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800"
+                className="w-full px-4 py-2 text-left text-sm text-theme-primary hover:bg-theme-primary"
               >
                 Export Events
               </button>
               <button
                 onClick={() => handleExport("tasks")}
-                className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800"
+                className="w-full px-4 py-2 text-left text-sm text-theme-primary hover:bg-theme-primary"
               >
                 Export Tasks
               </button>
               <button
                 onClick={() => handleExport("sessions")}
-                className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800"
+                className="w-full px-4 py-2 text-left text-sm text-theme-primary hover:bg-theme-primary"
               >
                 Export Sessions
               </button>

@@ -89,21 +89,21 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-theme-primary">
       {/* Error Banner */}
       {showError && errorMessage && (
-        <div className="bg-red-900/50 border-b border-red-800">
+        <div className="bg-red-900/50 dark:bg-red-900/50 light:bg-red-100 border-b border-red-800 dark:border-red-800 light:border-red-300">
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-red-400" />
-                <span className="text-red-200">{errorMessage}</span>
+                <AlertTriangle className="h-5 w-5 text-red-400 dark:text-red-400 light:text-red-600" />
+                <span className="text-red-200 dark:text-red-200 light:text-red-700">{errorMessage}</span>
               </div>
               <button
                 onClick={() => setShowError(false)}
-                className="p-1 hover:bg-red-800/50 rounded"
+                className="p-1 hover:bg-red-800/50 dark:hover:bg-red-800/50 light:hover:bg-red-200 rounded"
               >
-                <X className="h-4 w-4 text-red-400" />
+                <X className="h-4 w-4 text-red-400 dark:text-red-400 light:text-red-600" />
               </button>
             </div>
           </div>
@@ -111,12 +111,12 @@ export default function DashboardPage() {
       )}
 
       {/* Header */}
-      <header className="border-b border-gray-800 bg-[#0f0f0f]">
+      <header className="border-b border-theme bg-theme-secondary">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Activity className="h-6 w-6 text-blue-400" />
-              <h1 className="text-xl font-bold text-white">
+              <h1 className="text-xl font-bold text-theme-primary">
                 AI Orchestration Dashboard
               </h1>
             </div>
@@ -127,24 +127,24 @@ export default function DashboardPage() {
               />
               <ExportButton selectedProject={selectedProject} />
               {lastUpdated && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-theme-secondary">
                   Updated: {formatLastUpdated()}
                 </span>
               )}
               <ConnectionStatus isConnected={isConnected} apiStatus={apiStatus} />
               <button
                 onClick={fetchData}
-                className="p-2 rounded-md hover:bg-gray-800 transition-colors"
+                className="p-2 rounded-md hover:bg-theme-card transition-colors"
                 title="Refresh"
               >
-                <RefreshCw className="h-4 w-4 text-gray-400" />
+                <RefreshCw className="h-4 w-4 text-theme-secondary" />
               </button>
               <button
                 onClick={() => setShowSettings(true)}
-                className="p-2 rounded-md hover:bg-gray-800 transition-colors"
+                className="p-2 rounded-md hover:bg-theme-card transition-colors"
                 title="Settings"
               >
-                <Settings className="h-4 w-4 text-gray-400" />
+                <Settings className="h-4 w-4 text-theme-secondary" />
               </button>
             </div>
           </div>
@@ -197,9 +197,9 @@ export default function DashboardPage() {
             {/* Three-column layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Events Panel */}
-              <div className="rounded-lg border border-gray-800 bg-[#0f0f0f]">
-                <div className="border-b border-gray-800 px-4 py-3">
-                  <h2 className="font-semibold text-white">Recent Events</h2>
+              <div className="rounded-lg border border-theme bg-theme-card">
+                <div className="border-b border-theme px-4 py-3">
+                  <h2 className="font-semibold text-theme-primary">Recent Events</h2>
                 </div>
                 <div className="p-4 max-h-[500px] overflow-y-auto">
                   <EventList events={events} />
@@ -207,9 +207,9 @@ export default function DashboardPage() {
               </div>
 
               {/* Sessions Panel */}
-              <div className="rounded-lg border border-gray-800 bg-[#0f0f0f]">
-                <div className="border-b border-gray-800 px-4 py-3">
-                  <h2 className="font-semibold text-white">Sessions</h2>
+              <div className="rounded-lg border border-theme bg-theme-card">
+                <div className="border-b border-theme px-4 py-3">
+                  <h2 className="font-semibold text-theme-primary">Sessions</h2>
                 </div>
                 <div className="p-4 max-h-[500px] overflow-y-auto">
                   <SessionList sessions={sessions} />
@@ -224,9 +224,9 @@ export default function DashboardPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 mt-auto">
+      <footer className="border-t border-theme mt-auto">
         <div className="container mx-auto px-4 py-4">
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-sm text-theme-secondary">
             AI Orchestration Dashboard v1.0.0 - Monitoring Claude Code Sessions
           </p>
         </div>

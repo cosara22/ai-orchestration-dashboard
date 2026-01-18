@@ -115,14 +115,14 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-[#0f0f0f]">
-      <div className="border-b border-gray-800 px-4 py-3 flex items-center justify-between">
-        <h2 className="font-semibold text-white">Tasks</h2>
+    <div className="rounded-lg border border-theme bg-theme-card">
+      <div className="border-b border-theme px-4 py-3 flex items-center justify-between">
+        <h2 className="font-semibold text-theme-primary">Tasks</h2>
         <button
           onClick={() => setShowForm(!showForm)}
           className={cn(
             "p-1.5 rounded-md transition-colors",
-            showForm ? "bg-gray-700 text-white" : "hover:bg-gray-800 text-gray-400"
+            showForm ? "bg-theme-primary text-theme-primary" : "hover:bg-theme-primary text-theme-secondary"
           )}
           title={showForm ? "Close form" : "Add task"}
         >
@@ -133,14 +133,14 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
       <div className="p-4 space-y-4">
         {/* Task Creation Form */}
         {showForm && (
-          <form onSubmit={handleSubmit} className="space-y-3 pb-4 border-b border-gray-800">
+          <form onSubmit={handleSubmit} className="space-y-3 pb-4 border-b border-theme">
             <div>
               <input
                 type="text"
                 placeholder="Task title..."
                 value={formData.title}
                 onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 autoFocus
               />
             </div>
@@ -150,12 +150,12 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 rows={2}
-                className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+                className="w-full px-3 py-2 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
               />
             </div>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Priority:</span>
+                <span className="text-xs text-theme-secondary">Priority:</span>
                 <select
                   value={formData.priority}
                   onChange={(e) =>
@@ -164,7 +164,7 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
                       priority: e.target.value as "low" | "medium" | "high",
                     }))
                   }
-                  className="px-2 py-1 text-xs bg-gray-900 border border-gray-700 rounded-md text-gray-200 focus:outline-none focus:border-blue-500"
+                  className="px-2 py-1 text-xs bg-theme-primary border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -188,7 +188,7 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400" />
           </div>
         ) : tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+          <div className="flex flex-col items-center justify-center py-12 text-theme-secondary">
             <Circle className="h-12 w-12 mb-4 opacity-30" />
             <p>No tasks yet</p>
             <p className="text-sm opacity-60">Click + to create a task</p>
@@ -204,7 +204,7 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
                 <div
                   key={task.task_id}
                   onClick={() => setSelectedTask(task)}
-                  className="flex items-start gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-3 hover:bg-gray-900 transition-colors group cursor-pointer"
+                  className="flex items-start gap-3 rounded-lg border border-theme bg-theme-primary p-3 hover:bg-theme-card transition-colors group cursor-pointer"
                 >
                   <button
                     onClick={(e) => {
@@ -217,7 +217,7 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
                           : "pending";
                       handleStatusChange(task.task_id, nextStatus);
                     }}
-                    className={cn("mt-0.5 p-0.5 rounded", status.color, "hover:bg-gray-700")}
+                    className={cn("mt-0.5 p-0.5 rounded", status.color, "hover:bg-theme-card")}
                     title={`Status: ${status.label}`}
                   >
                     <StatusIcon className="h-4 w-4" />
@@ -229,8 +229,8 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
                         className={cn(
                           "text-sm",
                           task.status === "completed"
-                            ? "line-through text-gray-500"
-                            : "text-white"
+                            ? "line-through text-theme-secondary"
+                            : "text-theme-primary"
                         )}
                       >
                         {task.title}
@@ -246,11 +246,11 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
                       </span>
                     </div>
                     {task.description && (
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                      <p className="text-xs text-theme-secondary mt-1 line-clamp-2">
                         {task.description}
                       </p>
                     )}
-                    <div className="text-xs text-gray-600 mt-1">
+                    <div className="text-xs text-theme-secondary opacity-70 mt-1">
                       Created {formatRelativeTime(task.created_at)}
                     </div>
                   </div>
@@ -260,7 +260,7 @@ export function TaskPanel({ selectedProject }: TaskPanelProps) {
                       e.stopPropagation();
                       handleDelete(task.task_id);
                     }}
-                    className="p-1 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="p-1 text-theme-secondary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Delete task"
                   >
                     <Trash2 className="h-4 w-4" />

@@ -2,32 +2,168 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+/* Dark theme (default) - Notion-inspired */
+:root,
+.dark {
+  --background: #191919;
+  --background-secondary: #202020;
+  --foreground: rgba(255, 255, 255, 0.9);
+  --foreground-secondary: rgba(255, 255, 255, 0.6);
+  --border: #2f2f2f;
+  --border-secondary: #3d3d3d;
+  --card: #262626;
+  --card-hover: #2f2f2f;
+  --accent: #529CCA;
+  --accent-hover: #4188b3;
+  --success: #4DAB9A;
+  --warning: #FFA344;
+  --error: #FF7369;
+  --info: #529CCA;
+}
+
+/* Light theme - Notion-inspired */
+.light {
+  --background: #ffffff;
+  --background-secondary: #fbfbfa;
+  --foreground: #37352f;
+  --foreground-secondary: #787774;
+  --border: #e9e9e7;
+  --border-secondary: #dfdfde;
+  --card: #ffffff;
+  --card-hover: #f7f6f3;
+  --accent: #0b6e99;
+  --accent-hover: #095a7d;
+  --success: #0f7b6c;
+  --warning: #d9730d;
+  --error: #e03e3e;
+  --info: #0b6e99;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: system-ui, -apple-system, sans-serif;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
+/* Theme-aware utility classes */
+.bg-theme-primary {
+  background-color: var(--background);
+}
+
+.bg-theme-secondary {
+  background-color: var(--background-secondary);
+}
+
+.bg-theme-card {
+  background-color: var(--card);
+}
+
+.bg-theme-card-hover {
+  background-color: var(--card-hover);
+}
+
+.text-theme-primary {
+  color: var(--foreground);
+}
+
+.text-theme-secondary {
+  color: var(--foreground-secondary);
+}
+
+.border-theme {
+  border-color: var(--border);
+}
+
+.border-theme-secondary {
+  border-color: var(--border-secondary);
+}
+
+/* Hover states */
+.hover\:bg-theme-card:hover {
+  background-color: var(--card);
+}
+
+.hover\:bg-theme-card-hover:hover {
+  background-color: var(--card-hover);
+}
+
+.hover\:bg-theme-primary:hover {
+  background-color: var(--background);
+}
+
+/* Custom scrollbar - Dark theme */
+.dark ::-webkit-scrollbar,
+:root ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-::-webkit-scrollbar-track {
-  background: #1a1a1a;
+.dark ::-webkit-scrollbar-track,
+:root ::-webkit-scrollbar-track {
+  background: #202020;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #333;
+.dark ::-webkit-scrollbar-thumb,
+:root ::-webkit-scrollbar-thumb {
+  background: #404040;
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #444;
+.dark ::-webkit-scrollbar-thumb:hover,
+:root ::-webkit-scrollbar-thumb:hover {
+  background: #505050;
+}
+
+/* Custom scrollbar - Light theme */
+.light ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.light ::-webkit-scrollbar-track {
+  background: #f7f6f3;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: #d3d1cb;
+  border-radius: 4px;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #b8b6b0;
+}
+
+/* Selection colors */
+.dark ::selection,
+:root ::selection {
+  background: rgba(82, 156, 202, 0.3);
+  color: inherit;
+}
+
+.light ::selection {
+  background: rgba(11, 110, 153, 0.2);
+  color: inherit;
+}
+
+/* Focus ring styles */
+.dark :focus-visible,
+:root :focus-visible {
+  outline: 2px solid rgba(82, 156, 202, 0.5);
+  outline-offset: 2px;
+}
+
+.light :focus-visible {
+  outline: 2px solid rgba(11, 110, 153, 0.4);
+  outline-offset: 2px;
+}
+
+/* Input placeholder colors */
+.dark ::placeholder,
+:root ::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.light ::placeholder {
+  color: rgba(55, 53, 47, 0.4);
 }

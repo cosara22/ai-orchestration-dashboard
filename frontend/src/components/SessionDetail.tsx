@@ -76,7 +76,7 @@ export function SessionDetail({ session, isOpen, onClose }: SessionDetailProps) 
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-white">{session.session_id}</span>
+              <span className="font-mono text-theme-primary">{session.session_id}</span>
               <span
                 className={cn(
                   "text-xs px-2 py-0.5 rounded-full",
@@ -87,7 +87,7 @@ export function SessionDetail({ session, isOpen, onClose }: SessionDetailProps) 
                 {config.label}
               </span>
             </div>
-            <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
+            <div className="flex items-center gap-4 mt-2 text-sm text-theme-secondary">
               <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
                 <span>Started {formatRelativeTime(session.start_time)}</span>
@@ -103,8 +103,8 @@ export function SessionDetail({ session, isOpen, onClose }: SessionDetailProps) 
         {/* Timeline */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-white">Session Timeline</h3>
-            <span className="text-xs text-gray-500">{events.length} events</span>
+            <h3 className="text-sm font-medium text-theme-primary">Session Timeline</h3>
+            <span className="text-xs text-theme-secondary">{events.length} events</span>
           </div>
 
           {isLoading ? (
@@ -112,7 +112,7 @@ export function SessionDetail({ session, isOpen, onClose }: SessionDetailProps) 
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400" />
             </div>
           ) : events.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-theme-secondary">
               <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>No events in this session</p>
             </div>
@@ -121,27 +121,27 @@ export function SessionDetail({ session, isOpen, onClose }: SessionDetailProps) 
               {events.map((event) => (
                 <div
                   key={event.event_id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-gray-900/50 border border-gray-800"
+                  className="flex items-start gap-3 p-3 rounded-lg bg-theme-primary border border-theme"
                 >
                   <div className="w-2 h-2 mt-2 rounded-full bg-blue-400 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-sm text-white">
+                      <span className="font-medium text-sm text-theme-primary">
                         {event.event_type}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-theme-secondary">
                         {formatRelativeTime(event.timestamp)}
                       </span>
                     </div>
                     {event.payload && Object.keys(event.payload).length > 0 && (
-                      <div className="mt-1 text-xs text-gray-400">
+                      <div className="mt-1 text-xs text-theme-secondary">
                         {event.payload.tool_name && (
-                          <span className="inline-block px-1.5 py-0.5 bg-gray-800 rounded mr-2">
+                          <span className="inline-block px-1.5 py-0.5 bg-theme-card border border-theme rounded mr-2">
                             Tool: {event.payload.tool_name}
                           </span>
                         )}
                         {event.payload.message && (
-                          <span className="text-gray-500 line-clamp-1">
+                          <span className="text-theme-secondary line-clamp-1">
                             {event.payload.message}
                           </span>
                         )}
@@ -157,8 +157,8 @@ export function SessionDetail({ session, isOpen, onClose }: SessionDetailProps) 
         {/* Metadata */}
         {session.metadata && Object.keys(session.metadata).length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-white">Metadata</h3>
-            <pre className="p-3 bg-gray-900 rounded-lg text-xs text-gray-400 overflow-x-auto">
+            <h3 className="text-sm font-medium text-theme-primary">Metadata</h3>
+            <pre className="p-3 bg-blue-900/20 border border-blue-900/30 rounded-lg text-xs text-theme-secondary overflow-x-auto">
               {JSON.stringify(session.metadata, null, 2)}
             </pre>
           </div>

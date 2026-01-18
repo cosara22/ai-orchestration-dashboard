@@ -31,7 +31,7 @@ export function ProjectSelector({ selectedProject, onProjectChange }: ProjectSel
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-900 border border-gray-700 rounded-md text-gray-200 hover:bg-gray-800 transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary hover:bg-theme-card transition-colors"
       >
         <FolderOpen className="h-4 w-4 text-blue-400" />
         <span className="max-w-[150px] truncate">
@@ -46,15 +46,15 @@ export function ProjectSelector({ selectedProject, onProjectChange }: ProjectSel
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-1 w-64 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-20 overflow-hidden">
+          <div className="absolute right-0 mt-1 w-64 bg-theme-card border border-theme rounded-md shadow-lg z-20 overflow-hidden">
             <div className="max-h-[300px] overflow-y-auto">
               <button
                 onClick={() => {
                   onProjectChange(null);
                   setIsOpen(false);
                 }}
-                className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-800 transition-colors flex items-center justify-between ${
-                  !selectedProject ? "bg-blue-900/30 text-blue-400" : "text-gray-200"
+                className={`w-full px-4 py-2 text-left text-sm hover:bg-theme-primary transition-colors flex items-center justify-between ${
+                  !selectedProject ? "bg-blue-900/30 text-blue-400" : "text-theme-primary"
                 }`}
               >
                 <span>All Projects</span>
@@ -63,7 +63,7 @@ export function ProjectSelector({ selectedProject, onProjectChange }: ProjectSel
                 )}
               </button>
               {projects.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                <div className="px-4 py-3 text-sm text-theme-secondary text-center">
                   No projects found
                 </div>
               ) : (
@@ -74,10 +74,10 @@ export function ProjectSelector({ selectedProject, onProjectChange }: ProjectSel
                       onProjectChange(project.name);
                       setIsOpen(false);
                     }}
-                    className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-800 transition-colors ${
+                    className={`w-full px-4 py-2 text-left text-sm hover:bg-theme-primary transition-colors ${
                       selectedProject === project.name
                         ? "bg-blue-900/30 text-blue-400"
-                        : "text-gray-200"
+                        : "text-theme-primary"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -86,7 +86,7 @@ export function ProjectSelector({ selectedProject, onProjectChange }: ProjectSel
                         <span className="text-xs text-blue-400">Selected</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-theme-secondary">
                       <span>{project.event_count} events</span>
                       <span>{project.session_count} sessions</span>
                     </div>

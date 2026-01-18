@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Modal } from "./Modal";
 import { useToast } from "./Toast";
-import { Settings, Monitor, Bell, Database, RefreshCw } from "lucide-react";
+import { useTheme } from "./ThemeProvider";
+import { Settings, Monitor, Bell, Database, RefreshCw, Sun, Moon } from "lucide-react";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -71,6 +72,7 @@ type TabId = "display" | "notifications" | "connection";
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const toast = useToast();
+  const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabId>("display");
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
@@ -131,7 +133,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors ${
                   activeTab === tab.id
                     ? "bg-blue-600 text-white"
-                    : "text-gray-400 hover:text-white hover:bg-gray-800"
+                    : "text-theme-secondary hover:text-theme-primary hover:bg-theme-primary"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -145,11 +147,42 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div className="flex-1 min-h-[300px]">
           {activeTab === "display" && (
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-white mb-4">Display Settings</h3>
+              <h3 className="text-sm font-medium text-theme-primary mb-4">Display Settings</h3>
 
               <div className="space-y-3">
+                {/* Theme Toggle */}
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">
+                  <label className="block text-xs text-theme-secondary mb-2">
+                    Theme
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setTheme("dark")}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors ${
+                        theme === "dark"
+                          ? "bg-blue-600 text-white"
+                          : "bg-theme-primary border border-theme text-theme-secondary hover:text-theme-primary"
+                      }`}
+                    >
+                      <Moon className="h-4 w-4" />
+                      Dark
+                    </button>
+                    <button
+                      onClick={() => setTheme("light")}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors ${
+                        theme === "light"
+                          ? "bg-blue-600 text-white"
+                          : "bg-theme-primary border border-theme text-theme-secondary hover:text-theme-primary"
+                      }`}
+                    >
+                      <Sun className="h-4 w-4" />
+                      Light
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-theme-secondary mb-1">
                     Auto-refresh interval (seconds)
                   </label>
                   <input
@@ -160,12 +193,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     onChange={(e) =>
                       updateSettings("display", "refreshInterval", parseInt(e.target.value) || 30)
                     }
-                    className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-md text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">
+                  <label className="block text-xs text-theme-secondary mb-1">
                     Events to display
                   </label>
                   <select
@@ -173,7 +206,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     onChange={(e) =>
                       updateSettings("display", "eventsLimit", parseInt(e.target.value))
                     }
-                    className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-md text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500"
                   >
                     <option value={20}>20</option>
                     <option value={50}>50</option>
@@ -182,7 +215,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">
+                  <label className="block text-xs text-theme-secondary mb-1">
                     Sessions to display
                   </label>
                   <select
@@ -190,7 +223,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     onChange={(e) =>
                       updateSettings("display", "sessionsLimit", parseInt(e.target.value))
                     }
-                    className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-md text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500"
                   >
                     <option value={10}>10</option>
                     <option value={20}>20</option>
@@ -199,17 +232,17 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-300">Show timestamps</label>
+                  <label className="text-sm text-theme-primary">Show timestamps</label>
                   <button
                     onClick={() =>
                       updateSettings("display", "showTimestamps", !settings.display.showTimestamps)
                     }
                     className={`relative w-10 h-5 rounded-full transition-colors ${
-                      settings.display.showTimestamps ? "bg-blue-600" : "bg-gray-700"
+                      settings.display.showTimestamps ? "bg-blue-600" : "bg-theme-primary border border-theme"
                     }`}
                   >
                     <span
-                      className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
                         settings.display.showTimestamps ? "translate-x-5" : ""
                       }`}
                     />
@@ -221,21 +254,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {activeTab === "notifications" && (
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-white mb-4">Notification Settings</h3>
+              <h3 className="text-sm font-medium text-theme-primary mb-4">Notification Settings</h3>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-300">Enable notifications</label>
+                  <label className="text-sm text-theme-primary">Enable notifications</label>
                   <button
                     onClick={() =>
                       updateSettings("notifications", "enabled", !settings.notifications.enabled)
                     }
                     className={`relative w-10 h-5 rounded-full transition-colors ${
-                      settings.notifications.enabled ? "bg-blue-600" : "bg-gray-700"
+                      settings.notifications.enabled ? "bg-blue-600" : "bg-theme-primary border border-theme"
                     }`}
                   >
                     <span
-                      className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
                         settings.notifications.enabled ? "translate-x-5" : ""
                       }`}
                     />
@@ -243,7 +276,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-300">Notify on errors</label>
+                  <label className="text-sm text-theme-primary">Notify on errors</label>
                   <button
                     onClick={() =>
                       updateSettings("notifications", "onError", !settings.notifications.onError)
@@ -252,11 +285,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     className={`relative w-10 h-5 rounded-full transition-colors ${
                       settings.notifications.onError && settings.notifications.enabled
                         ? "bg-blue-600"
-                        : "bg-gray-700"
+                        : "bg-theme-primary border border-theme"
                     } ${!settings.notifications.enabled ? "opacity-50" : ""}`}
                   >
                     <span
-                      className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
                         settings.notifications.onError && settings.notifications.enabled
                           ? "translate-x-5"
                           : ""
@@ -266,7 +299,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-300">Notify on session end</label>
+                  <label className="text-sm text-theme-primary">Notify on session end</label>
                   <button
                     onClick={() =>
                       updateSettings("notifications", "onSessionEnd", !settings.notifications.onSessionEnd)
@@ -275,11 +308,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     className={`relative w-10 h-5 rounded-full transition-colors ${
                       settings.notifications.onSessionEnd && settings.notifications.enabled
                         ? "bg-blue-600"
-                        : "bg-gray-700"
+                        : "bg-theme-primary border border-theme"
                     } ${!settings.notifications.enabled ? "opacity-50" : ""}`}
                   >
                     <span
-                      className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
                         settings.notifications.onSessionEnd && settings.notifications.enabled
                           ? "translate-x-5"
                           : ""
@@ -293,11 +326,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {activeTab === "connection" && (
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-white mb-4">Connection Settings</h3>
+              <h3 className="text-sm font-medium text-theme-primary mb-4">Connection Settings</h3>
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">
+                  <label className="block text-xs text-theme-secondary mb-1">
                     API URL
                   </label>
                   <input
@@ -307,12 +340,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       updateSettings("connection", "apiUrl", e.target.value)
                     }
                     placeholder="http://localhost:4000"
-                    className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono"
+                    className="w-full px-3 py-2 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">
+                  <label className="block text-xs text-theme-secondary mb-1">
                     WebSocket URL
                   </label>
                   <input
@@ -322,11 +355,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       updateSettings("connection", "wsUrl", e.target.value)
                     }
                     placeholder="ws://localhost:4000/ws"
-                    className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono"
+                    className="w-full px-3 py-2 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
 
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-theme-secondary mt-2">
                   Note: Changing connection settings requires a page reload to take effect.
                 </p>
               </div>
@@ -336,10 +369,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-800">
+      <div className="flex items-center justify-between mt-6 pt-4 border-t border-theme">
         <button
           onClick={handleReset}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 px-3 py-2 text-sm text-theme-secondary hover:text-theme-primary transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
           Reset to defaults
@@ -347,7 +380,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-sm text-theme-secondary hover:text-theme-primary transition-colors"
           >
             Cancel
           </button>

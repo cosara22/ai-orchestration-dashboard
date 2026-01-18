@@ -48,7 +48,7 @@ export function SessionList({ sessions }: SessionListProps) {
         <select
           value={selectedStatus || ""}
           onChange={(e) => setSelectedStatus(e.target.value || null)}
-          className="px-3 py-1.5 text-sm bg-gray-900 border border-gray-700 rounded-md text-gray-200 focus:outline-none focus:border-blue-500"
+          className="px-3 py-1.5 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500"
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -58,7 +58,7 @@ export function SessionList({ sessions }: SessionListProps) {
         {selectedStatus && (
           <button
             onClick={() => setSelectedStatus(null)}
-            className="px-2 py-1.5 text-sm text-gray-400 hover:text-white flex items-center gap-1"
+            className="px-2 py-1.5 text-sm text-theme-secondary hover:text-theme-primary flex items-center gap-1"
           >
             <X className="h-3 w-3" />
             Clear
@@ -68,14 +68,14 @@ export function SessionList({ sessions }: SessionListProps) {
 
       {/* Results count */}
       {selectedStatus && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-theme-secondary">
           Showing {filteredSessions.length} of {sessions.length} sessions
         </p>
       )}
 
       {/* Session List */}
       {filteredSessions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+        <div className="flex flex-col items-center justify-center py-12 text-theme-secondary">
           <Circle className="h-12 w-12 mb-4 opacity-30" />
           <p>{selectedStatus ? "No matching sessions" : "No sessions yet"}</p>
           <p className="text-sm opacity-60">
@@ -92,21 +92,21 @@ export function SessionList({ sessions }: SessionListProps) {
               <div
                 key={session.session_id}
                 onClick={() => setSelectedSession(session)}
-                className="flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-3 hover:bg-gray-900 transition-colors cursor-pointer"
+                className="flex items-center gap-3 rounded-lg border border-theme bg-theme-primary p-3 hover:bg-theme-card transition-colors cursor-pointer"
               >
                 <div className={cn("rounded-full p-1", config.bgColor)}>
                   <Icon className={cn("h-4 w-4", config.color)} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-sm truncate">
+                    <span className="font-mono text-sm text-theme-primary truncate">
                       {session.session_id.slice(0, 12)}...
                     </span>
                     <span className={cn("text-xs px-2 py-0.5 rounded-full", config.bgColor, config.color)}>
                       {config.label}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 mt-1 text-xs text-theme-secondary">
                     <span>Started {formatRelativeTime(session.start_time)}</span>
                     {session.end_time && (
                       <span>Ended {formatRelativeTime(session.end_time)}</span>

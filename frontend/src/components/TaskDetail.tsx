@@ -103,12 +103,12 @@ export function TaskDetail({ task, isOpen, onClose, onUpdate, onDelete }: TaskDe
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 text-lg font-medium bg-gray-900 border border-gray-700 rounded-md text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-lg font-medium bg-theme-primary border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500"
               />
             ) : (
-              <h3 className="text-lg font-medium text-white">{task.title}</h3>
+              <h3 className="text-lg font-medium text-theme-primary">{task.title}</h3>
             )}
-            <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 mt-2 text-sm text-theme-secondary">
               <span>Created {formatRelativeTime(task.created_at)}</span>
               {task.updated_at !== task.created_at && (
                 <span>| Updated {formatRelativeTime(task.updated_at)}</span>
@@ -120,12 +120,12 @@ export function TaskDetail({ task, isOpen, onClose, onUpdate, onDelete }: TaskDe
         {/* Status & Priority */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Status</label>
+            <label className="block text-xs text-theme-secondary mb-1">Status</label>
             {isEditing ? (
               <select
                 value={formData.status}
                 onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as any }))}
-                className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-md text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500"
               >
                 <option value="pending">Pending</option>
                 <option value="in_progress">In Progress</option>
@@ -140,12 +140,12 @@ export function TaskDetail({ task, isOpen, onClose, onUpdate, onDelete }: TaskDe
             )}
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Priority</label>
+            <label className="block text-xs text-theme-secondary mb-1">Priority</label>
             {isEditing ? (
               <select
                 value={formData.priority}
                 onChange={(e) => setFormData((prev) => ({ ...prev, priority: e.target.value as any }))}
-                className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-md text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -161,24 +161,24 @@ export function TaskDetail({ task, isOpen, onClose, onUpdate, onDelete }: TaskDe
 
         {/* Description */}
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Description</label>
+          <label className="block text-xs text-theme-secondary mb-1">Description</label>
           {isEditing ? (
             <textarea
               value={formData.description}
               onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
               rows={4}
               placeholder="Add a description..."
-              className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full px-3 py-2 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
             />
           ) : (
-            <p className="text-sm text-gray-300 p-3 bg-gray-900/50 rounded-md min-h-[60px]">
-              {task.description || <span className="text-gray-500 italic">No description</span>}
+            <p className="text-sm text-theme-primary p-3 bg-theme-primary border border-theme rounded-md min-h-[60px]">
+              {task.description || <span className="text-theme-secondary italic">No description</span>}
             </p>
           )}
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-800">
+        <div className="flex items-center justify-between pt-4 border-t border-theme">
           <button
             onClick={handleDelete}
             className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-colors"
@@ -199,7 +199,7 @@ export function TaskDetail({ task, isOpen, onClose, onUpdate, onDelete }: TaskDe
                     });
                     setIsEditing(false);
                   }}
-                  className="px-3 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                  className="px-3 py-2 text-sm text-theme-secondary hover:text-theme-primary transition-colors"
                 >
                   Cancel
                 </button>
@@ -215,7 +215,7 @@ export function TaskDetail({ task, isOpen, onClose, onUpdate, onDelete }: TaskDe
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-4 py-2 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors"
+                className="px-4 py-2 text-sm bg-theme-card border border-theme text-theme-primary rounded-md hover:bg-theme-primary transition-colors"
               >
                 Edit
               </button>

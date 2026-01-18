@@ -30,7 +30,7 @@ export function ConnectionStatus({ isConnected, apiStatus = "unknown" }: Connect
           apiStatus === "ok" ? "bg-green-400" :
           apiStatus === "error" ? "bg-red-400" : "bg-yellow-400"
         )} />
-        <span className="text-sm text-gray-400">
+        <span className="text-sm text-theme-secondary">
           API: {apiStatus}
         </span>
       </div>

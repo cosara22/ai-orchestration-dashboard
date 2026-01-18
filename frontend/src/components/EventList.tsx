@@ -60,12 +60,12 @@ export function EventList({ events }: EventListProps) {
             placeholder="Search events..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-1.5 text-sm bg-gray-900 border border-gray-700 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-1.5 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary placeholder-gray-500 focus:outline-none focus:border-blue-500"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-theme-secondary hover:text-theme-primary"
             >
               <X className="h-3 w-3" />
             </button>
@@ -74,7 +74,7 @@ export function EventList({ events }: EventListProps) {
         <select
           value={selectedType || ""}
           onChange={(e) => setSelectedType(e.target.value || null)}
-          className="px-3 py-1.5 text-sm bg-gray-900 border border-gray-700 rounded-md text-gray-200 focus:outline-none focus:border-blue-500"
+          className="px-3 py-1.5 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary focus:outline-none focus:border-blue-500"
         >
           <option value="">All types</option>
           {eventTypes.map((type) => (
@@ -89,7 +89,7 @@ export function EventList({ events }: EventListProps) {
               setSelectedType(null);
               setSearchQuery("");
             }}
-            className="px-2 py-1.5 text-sm text-gray-400 hover:text-white flex items-center gap-1"
+            className="px-2 py-1.5 text-sm text-theme-secondary hover:text-theme-primary flex items-center gap-1"
           >
             <X className="h-3 w-3" />
             Clear
@@ -99,14 +99,14 @@ export function EventList({ events }: EventListProps) {
 
       {/* Results count */}
       {hasFilters && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-theme-secondary">
           Showing {filteredEvents.length} of {events.length} events
         </p>
       )}
 
       {/* Event List */}
       {filteredEvents.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+        <div className="flex flex-col items-center justify-center py-12 text-theme-secondary">
           <Activity className="h-12 w-12 mb-4 opacity-30" />
           <p>{hasFilters ? "No matching events" : "No events yet"}</p>
           <p className="text-sm opacity-60">
@@ -122,17 +122,17 @@ export function EventList({ events }: EventListProps) {
             return (
               <div
                 key={event.event_id}
-                className="flex items-start gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-3 hover:bg-gray-900 transition-colors"
+                className="flex items-start gap-3 rounded-lg border border-theme bg-theme-primary p-3 hover:bg-theme-card transition-colors"
               >
                 <div className={`rounded-md p-2 ${colorClass}`}>
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-sm truncate">
+                    <span className="font-medium text-sm text-theme-primary truncate">
                       {event.event_type}
                     </span>
-                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                    <span className="text-xs text-theme-secondary whitespace-nowrap">
                       {formatRelativeTime(event.timestamp)}
                     </span>
                   </div>
@@ -142,12 +142,12 @@ export function EventList({ events }: EventListProps) {
                     </p>
                   )}
                   {event.payload?.message && (
-                    <p className="text-sm text-gray-400 mt-1 truncate">
+                    <p className="text-sm text-theme-secondary mt-1 truncate">
                       {event.payload.message}
                     </p>
                   )}
                   {event.session_id && (
-                    <p className="text-xs text-gray-600 mt-1">
+                    <p className="text-xs text-theme-secondary opacity-70 mt-1">
                       Session: {event.session_id.slice(0, 8)}...
                     </p>
                   )}

@@ -124,6 +124,25 @@ Claude Code Hooks を活用したリアルタイムモニタリングダッシ�
 
 ---
 
+### Phase 7: テーマ切替 - Priority 6 (完了)
+
+**完了日**: 2026-01-19
+
+| 項目 | 状態 | 成果物 |
+|------|------|--------|
+| ThemeProvider | 完了 | `ThemeProvider.tsx` |
+| CSS変数定義 | 完了 | `globals.css` |
+| テーマ切替UI | 完了 | `SettingsModal.tsx` |
+| コンポーネント対応 | 完了 | `page.tsx` |
+
+**機能**:
+- ダーク/ライトテーマの切替
+- localStorage による設定永続化
+- CSS変数によるテーマ対応
+- スムーズなトランジション
+
+---
+
 ## 3. 実装済みコンポーネント一覧
 
 ### 3.1 Frontend (`frontend/src/`)
@@ -146,6 +165,7 @@ components/
 ├── TaskDetail.tsx      # タスク詳細・編集モーダル
 ├── Toast.tsx           # トースト通知システム
 ├── Providers.tsx       # クライアントプロバイダー
+├── ThemeProvider.tsx   # テーマ切替プロバイダー
 ├── Modal.tsx           # 汎用モーダル
 ├── ExportButton.tsx    # CSVエクスポート
 └── SettingsModal.tsx   # 設定画面
@@ -199,7 +219,7 @@ ws/
 ### 4.2 設計パターン
 
 - **コンポーネント設計**: 単一責任原則に基づく分割
-- **状態管理**: React hooks (useState, useCallback) + Context (Toast)
+- **状態管理**: React hooks (useState, useCallback) + Context (Toast, Theme)
 - **API 設計**: RESTful + WebSocket ハイブリッド
 - **エラーハンドリング**: try-catch + トースト通知
 
@@ -207,11 +227,10 @@ ws/
 
 ## 5. ネクストアクション
 
-### 5.1 Priority 6: 拡張機能 (未着手)
+### 5.1 Priority 7: 拡張機能 (未着手)
 
 | 機能 | 優先度 | 説明 |
 |------|--------|------|
-| ダークモード切替 | Medium | テーマ切替機能（現在はダークのみ） |
 | エージェント管理画面 | Medium | エージェント状態の詳細表示 |
 | ログ検索 | Medium | 全文検索機能 |
 | アラート設定 | Low | 閾値ベースの通知 |
@@ -237,7 +256,13 @@ curl http://localhost:4000/api/events?limit=1
 
 設定は localStorage に保存され、ブラウザを閉じても維持されます。
 
-### 5.4 推奨実装順序
+### 5.4 テーマ切替の使用方法
+
+1. ヘッダー右端の歯車アイコンをクリック
+2. Display タブで「Theme」セクションからDark/Lightを選択
+3. 選択は即座に反映され、localStorage に保存されます
+
+### 5.5 推奨実装順序
 
 ```
 1. 動作確認・デバッグ
@@ -246,8 +271,8 @@ curl http://localhost:4000/api/events?limit=1
    └── 実際の Claude Code セッションでの動作確認
 
 2. 追加機能の実装
-   ├── ダークモード切替（優先度: Medium）
    ├── エージェント管理画面
+   ├── ログ検索機能
    └── その他は優先度に応じて順次実装
 ```
 
