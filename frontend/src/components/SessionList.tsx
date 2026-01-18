@@ -1,8 +1,9 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { Session } from "@/lib/api";
 import { formatRelativeTime, cn } from "@/lib/utils";
-import { Circle, CheckCircle2, XCircle } from "lucide-react";
+import { Circle, CheckCircle2, XCircle, X } from "lucide-react";
 
 interface SessionListProps {
   sessions: Session[];
@@ -30,49 +31,90 @@ const statusConfig = {
 };
 
 export function SessionList({ sessions }: SessionListProps) {
-  if (sessions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-        <Circle className="h-12 w-12 mb-4 opacity-30" />
-        <p>No sessions yet</p>
-        <p className="text-sm opacity-60">Sessions will appear here when created</p>
-      </div>
-    );
-  }
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+
+  // Filter sessions
+  const filteredSessions = useMemo(() => {
+    if (!selectedStatus) return sessions;
+    return sessions.filter((s) => s.status === selectedStatus);
+  }, [sessions, selectedStatus]);
 
   return (
-    <div className="space-y-2">
-      {sessions.map((session) => {
-        const config = statusConfig[session.status];
-        const Icon = config.icon;
-
-        return (
-          <div
-            key={session.session_id}
-            className="flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-3 hover:bg-gray-900 transition-colors cursor-pointer"
+    <div className="space-y-3">
+      {/* Filter Controls */}
+      <div className="flex gap-2">
+        <select
+          value={selectedStatus || ""}
+          onChange={(e) => setSelectedStatus(e.target.value || null)}
+          className="px-3 py-1.5 text-sm bg-gray-900 border border-gray-700 rounded-md text-gray-200 focus:outline-none focus:border-blue-500"
+        >
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="failed">Failed</option>
+        </select>
+        {selectedStatus && (
+          <button
+            onClick={() => setSelectedStatus(null)}
+            className="px-2 py-1.5 text-sm text-gray-400 hover:text-white flex items-center gap-1"
           >
-            <div className={cn("rounded-full p-1", config.bgColor)}>
-              <Icon className={cn("h-4 w-4", config.color)} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-sm truncate">
-                  {session.session_id.slice(0, 12)}...
-                </span>
-                <span className={cn("text-xs px-2 py-0.5 rounded-full", config.bgColor, config.color)}>
-                  {config.label}
-                </span>
+            <X className="h-3 w-3" />
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Results count */}
+      {selectedStatus && (
+        <p className="text-xs text-gray-500">
+          Showing {filteredSessions.length} of {sessions.length} sessions
+        </p>
+      )}
+
+      {/* Session List */}
+      {filteredSessions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+          <Circle className="h-12 w-12 mb-4 opacity-30" />
+          <p>{selectedStatus ? "No matching sessions" : "No sessions yet"}</p>
+          <p className="text-sm opacity-60">
+            {selectedStatus ? "Try adjusting your filter" : "Sessions will appear here when created"}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredSessions.map((session) => {
+            const config = statusConfig[session.status];
+            const Icon = config.icon;
+
+            return (
+              <div
+                key={session.session_id}
+                className="flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-3 hover:bg-gray-900 transition-colors cursor-pointer"
+              >
+                <div className={cn("rounded-full p-1", config.bgColor)}>
+                  <Icon className={cn("h-4 w-4", config.color)} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-sm truncate">
+                      {session.session_id.slice(0, 12)}...
+                    </span>
+                    <span className={cn("text-xs px-2 py-0.5 rounded-full", config.bgColor, config.color)}>
+                      {config.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                    <span>Started {formatRelativeTime(session.start_time)}</span>
+                    {session.end_time && (
+                      <span>Ended {formatRelativeTime(session.end_time)}</span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
-                <span>Started {formatRelativeTime(session.start_time)}</span>
-                {session.end_time && (
-                  <span>Ended {formatRelativeTime(session.end_time)}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

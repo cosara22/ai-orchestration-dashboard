@@ -7,6 +7,7 @@ import { StatusCard } from "@/components/StatusCard";
 import { EventList } from "@/components/EventList";
 import { SessionList } from "@/components/SessionList";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { TimelineChart } from "@/components/TimelineChart";
 import { Activity, RefreshCw, AlertTriangle, X } from "lucide-react";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4000/ws";
@@ -171,6 +172,9 @@ export default function DashboardPage() {
                 icon="error"
               />
             </div>
+
+            {/* Timeline Chart */}
+            <TimelineChart />
 
             {/* Two-column layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
