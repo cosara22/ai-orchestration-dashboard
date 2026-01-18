@@ -8,6 +8,8 @@ import { EventList } from "@/components/EventList";
 import { SessionList } from "@/components/SessionList";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { TimelineChart } from "@/components/TimelineChart";
+import { ProjectSelector } from "@/components/ProjectSelector";
+import { TaskPanel } from "@/components/TaskPanel";
 import { Activity, RefreshCw, AlertTriangle, X } from "lucide-react";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4000/ws";
@@ -21,6 +23,7 @@ export default function DashboardPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showError, setShowError] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
 
   const handleWSMessage = useCallback((message: any) => {
     if (message.type === "event") {
@@ -45,8 +48,8 @@ export default function DashboardPage() {
   const fetchData = useCallback(async () => {
     try {
       const [eventsRes, sessionsRes, metricsRes] = await Promise.all([
-        api.getEvents({ limit: 50 }),
-        api.getSessions({ limit: 20 }),
+        api.getEvents({ limit: 50, project: selectedProject || undefined }),
+        api.getSessions({ limit: 20, project: selectedProject || undefined }),
         api.getMetricsSummary(),
       ]);
 
@@ -69,7 +72,7 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedProject]);
 
   useEffect(() => {
     fetchData();
@@ -115,6 +118,10 @@ export default function DashboardPage() {
               </h1>
             </div>
             <div className="flex items-center gap-4">
+              <ProjectSelector
+                selectedProject={selectedProject}
+                onProjectChange={setSelectedProject}
+              />
               {lastUpdated && (
                 <span className="text-xs text-gray-500">
                   Updated: {formatLastUpdated()}
@@ -176,8 +183,8 @@ export default function DashboardPage() {
             {/* Timeline Chart */}
             <TimelineChart />
 
-            {/* Two-column layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Three-column layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Events Panel */}
               <div className="rounded-lg border border-gray-800 bg-[#0f0f0f]">
                 <div className="border-b border-gray-800 px-4 py-3">
@@ -197,6 +204,9 @@ export default function DashboardPage() {
                   <SessionList sessions={sessions} />
                 </div>
               </div>
+
+              {/* Tasks Panel */}
+              <TaskPanel selectedProject={selectedProject} />
             </div>
           </div>
         )}

@@ -4,6 +4,8 @@ import { logger } from "hono/logger";
 import { eventsRouter } from "./routes/events";
 import { sessionsRouter } from "./routes/sessions";
 import { metricsRouter } from "./routes/metrics";
+import { projectsRouter } from "./routes/projects";
+import { tasksRouter } from "./routes/tasks";
 import { wsHandler } from "./ws/handler";
 
 const app = new Hono();
@@ -31,6 +33,8 @@ app.get("/health", (c) => {
 app.route("/api/events", eventsRouter);
 app.route("/api/sessions", sessionsRouter);
 app.route("/api/metrics", metricsRouter);
+app.route("/api/projects", projectsRouter);
+app.route("/api/tasks", tasksRouter);
 
 // WebSocket upgrade is handled at Bun.serve level
 

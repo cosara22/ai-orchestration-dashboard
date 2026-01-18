@@ -24,12 +24,15 @@ CREATE TABLE IF NOT EXISTS sessions (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
--- Tasks table: Tracks tasks within sessions
+-- Tasks table: Tracks tasks within sessions or standalone tasks
 CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id TEXT UNIQUE NOT NULL,
-    session_id TEXT NOT NULL,
+    session_id TEXT,
     title TEXT NOT NULL,
+    description TEXT,
+    priority TEXT DEFAULT 'medium',
+    project TEXT,
     status TEXT DEFAULT 'pending',
     progress INTEGER DEFAULT 0,
     result TEXT,

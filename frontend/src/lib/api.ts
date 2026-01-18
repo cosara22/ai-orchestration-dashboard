@@ -60,13 +60,32 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   return res.json();
 }
 
+export interface Project {
+  name: string;
+  event_count: number;
+  session_count: number;
+  last_activity: string | null;
+}
+
+export interface Task {
+  task_id: string;
+  title: string;
+  description: string | null;
+  priority: "low" | "medium" | "high";
+  project: string | null;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  created_at: string;
+  updated_at: string;
+}
+
 export const api = {
   // Events
-  getEvents: (params?: { limit?: number; offset?: number; event_type?: string }) => {
+  getEvents: (params?: { limit?: number; offset?: number; event_type?: string; project?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set("limit", String(params.limit));
     if (params?.offset) searchParams.set("offset", String(params.offset));
     if (params?.event_type) searchParams.set("event_type", params.event_type);
+    if (params?.project) searchParams.set("project", params.project);
     const query = searchParams.toString();
     return fetchApi<{ events: Event[]; limit: number; offset: number }>(
       `/api/events${query ? `?${query}` : ""}`
@@ -74,15 +93,19 @@ export const api = {
   },
 
   // Sessions
-  getSessions: (params?: { limit?: number; status?: string }) => {
+  getSessions: (params?: { limit?: number; status?: string; project?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set("limit", String(params.limit));
     if (params?.status) searchParams.set("status", params.status);
+    if (params?.project) searchParams.set("project", params.project);
     const query = searchParams.toString();
     return fetchApi<{ sessions: Session[]; limit: number; offset: number }>(
       `/api/sessions${query ? `?${query}` : ""}`
     );
   },
+
+  // Projects
+  getProjects: () => fetchApi<{ projects: Project[] }>("/api/projects"),
 
   getSession: (id: string) => fetchApi<Session>(`/api/sessions/${id}`),
 
@@ -96,4 +119,34 @@ export const api = {
 
   // Health
   getHealth: () => fetchApi<{ status: string; timestamp: string }>("/health"),
+
+  // Tasks
+  getTasks: (params?: { limit?: number; status?: string; project?: string; priority?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.project) searchParams.set("project", params.project);
+    if (params?.priority) searchParams.set("priority", params.priority);
+    const query = searchParams.toString();
+    return fetchApi<{ tasks: Task[]; limit: number; offset: number }>(
+      `/api/tasks${query ? `?${query}` : ""}`
+    );
+  },
+
+  createTask: (task: { title: string; description?: string; priority?: string; project?: string }) =>
+    fetchApi<{ success: boolean; task: Task }>("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify(task),
+    }),
+
+  updateTask: (id: string, updates: { title?: string; description?: string; priority?: string; status?: string }) =>
+    fetchApi<Task>(`/api/tasks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }),
+
+  deleteTask: (id: string) =>
+    fetchApi<{ success: boolean }>(`/api/tasks/${id}`, {
+      method: "DELETE",
+    }),
 };

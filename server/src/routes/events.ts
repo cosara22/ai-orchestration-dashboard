@@ -73,6 +73,7 @@ eventsRouter.get("/", async (c) => {
     const offset = parseInt(c.req.query("offset") || "0");
     const eventType = c.req.query("event_type");
     const sessionId = c.req.query("session_id");
+    const project = c.req.query("project");
 
     let query = "SELECT * FROM events WHERE 1=1";
     const params: any[] = [];
@@ -85,6 +86,11 @@ eventsRouter.get("/", async (c) => {
     if (sessionId) {
       query += " AND session_id = ?";
       params.push(sessionId);
+    }
+
+    if (project) {
+      query += " AND json_extract(payload, '$.source_app') = ?";
+      params.push(project);
     }
 
     query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
