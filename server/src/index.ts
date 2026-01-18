@@ -13,7 +13,7 @@ app.use("*", logger());
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: ["http://localhost:3000", "http://localhost:3002", "http://127.0.0.1:3000", "http://127.0.0.1:3002"],
     credentials: true,
   })
 );
@@ -32,15 +32,7 @@ app.route("/api/events", eventsRouter);
 app.route("/api/sessions", sessionsRouter);
 app.route("/api/metrics", metricsRouter);
 
-// WebSocket upgrade handler
-app.get("/ws", (c) => {
-  const upgradeHeader = c.req.header("Upgrade");
-  if (upgradeHeader !== "websocket") {
-    return c.text("Expected WebSocket", 426);
-  }
-  // WebSocket handling is done at server level
-  return c.text("WebSocket endpoint", 200);
-});
+// WebSocket upgrade is handled at Bun.serve level
 
 // 404 handler
 app.notFound((c) => {
@@ -59,7 +51,23 @@ console.log(`Starting AOD API Gateway on port ${PORT}...`);
 
 const server = Bun.serve({
   port: PORT,
-  fetch: app.fetch,
+  fetch(req, server) {
+    const url = new URL(req.url);
+
+    // Handle WebSocket upgrade for /ws path
+    if (url.pathname === "/ws") {
+      const upgraded = server.upgrade(req, {
+        data: { id: "", subscribedChannels: new Set(["all"]) },
+      });
+      if (upgraded) {
+        return undefined;
+      }
+      return new Response("WebSocket upgrade failed", { status: 400 });
+    }
+
+    // Handle regular HTTP requests with Hono
+    return app.fetch(req, server);
+  },
   websocket: wsHandler,
 });
 
