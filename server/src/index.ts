@@ -6,7 +6,11 @@ import { sessionsRouter } from "./routes/sessions";
 import { metricsRouter } from "./routes/metrics";
 import { projectsRouter } from "./routes/projects";
 import { tasksRouter } from "./routes/tasks";
+import { agentsRouter } from "./routes/agents";
+import { searchRouter } from "./routes/search";
+import { alertsRouter } from "./routes/alerts";
 import { wsHandler } from "./ws/handler";
+import { authMiddleware, isAuthEnabled } from "./middleware/auth";
 
 const app = new Hono();
 
@@ -20,14 +24,18 @@ app.use(
   })
 );
 
-// Health check
+// Health check (before auth middleware)
 app.get("/health", (c) => {
   return c.json({
     status: "ok",
     timestamp: new Date().toISOString(),
     version: "1.0.0",
+    auth_enabled: isAuthEnabled(),
   });
 });
+
+// Auth middleware for API routes
+app.use("/api/*", authMiddleware);
 
 // API Routes
 app.route("/api/events", eventsRouter);
@@ -35,6 +43,9 @@ app.route("/api/sessions", sessionsRouter);
 app.route("/api/metrics", metricsRouter);
 app.route("/api/projects", projectsRouter);
 app.route("/api/tasks", tasksRouter);
+app.route("/api/agents", agentsRouter);
+app.route("/api/search", searchRouter);
+app.route("/api/alerts", alertsRouter);
 
 // WebSocket upgrade is handled at Bun.serve level
 

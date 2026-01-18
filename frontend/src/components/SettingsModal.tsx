@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { Modal } from "./Modal";
 import { useToast } from "./Toast";
 import { useTheme } from "./ThemeProvider";
-import { Settings, Monitor, Bell, Database, RefreshCw, Sun, Moon } from "lucide-react";
+import { getApiKey, setApiKey } from "@/lib/api";
+import { Settings, Monitor, Bell, Database, RefreshCw, Sun, Moon, Key, Eye, EyeOff } from "lucide-react";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -76,10 +77,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>("display");
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
+  const [apiKeyValue, setApiKeyValue] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setSettings(loadSettings());
+      setApiKeyValue(getApiKey() || "");
       setHasChanges(false);
     }
   }, [isOpen]);
@@ -101,6 +105,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   const handleSave = () => {
     saveSettings(settings);
+    setApiKey(apiKeyValue || null);
     setHasChanges(false);
     toast.success("Settings saved", "Your preferences have been updated");
     onClose();
@@ -329,6 +334,35 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <h3 className="text-sm font-medium text-theme-primary mb-4">Connection Settings</h3>
 
               <div className="space-y-3">
+                <div>
+                  <label className="block text-xs text-theme-secondary mb-1">
+                    <Key className="inline h-3 w-3 mr-1" />
+                    API Key (optional)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showApiKey ? "text" : "password"}
+                      value={apiKeyValue}
+                      onChange={(e) => {
+                        setApiKeyValue(e.target.value);
+                        setHasChanges(true);
+                      }}
+                      placeholder="Leave empty if auth is disabled"
+                      className="w-full px-3 py-2 pr-10 text-sm bg-theme-primary border border-theme rounded-md text-theme-primary placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-theme-secondary hover:text-theme-primary"
+                    >
+                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-theme-secondary mt-1">
+                    Required if server has AOD_API_KEY configured
+                  </p>
+                </div>
+
                 <div>
                   <label className="block text-xs text-theme-secondary mb-1">
                     API URL

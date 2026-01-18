@@ -55,8 +55,9 @@ export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
         }, reconnectInterval);
       };
 
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
+      ws.onerror = () => {
+        // WebSocket errors don't expose details for security reasons
+        // The onclose handler will manage reconnection
       };
 
       wsRef.current = ws;

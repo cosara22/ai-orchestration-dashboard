@@ -4,9 +4,11 @@ import { useState, useMemo } from "react";
 import { Event } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/utils";
 import { Activity, FileCode, Terminal, GitBranch, MessageSquare, X } from "lucide-react";
+import { Pagination } from "./Pagination";
 
 interface EventListProps {
   events: Event[];
+  itemsPerPage?: number;
 }
 
 const eventTypeIcons: Record<string, typeof Activity> = {
@@ -25,9 +27,12 @@ const eventTypeColors: Record<string, string> = {
   default: "text-gray-400 bg-gray-400/10",
 };
 
-export function EventList({ events }: EventListProps) {
+const DEFAULT_ITEMS_PER_PAGE = 20;
+
+export function EventList({ events, itemsPerPage = DEFAULT_ITEMS_PER_PAGE }: EventListProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Get unique event types
   const eventTypes = useMemo(() => {
@@ -47,6 +52,18 @@ export function EventList({ events }: EventListProps) {
       return matchesType && matchesSearch;
     });
   }, [events, selectedType, searchQuery]);
+
+  // Reset to page 1 when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [selectedType, searchQuery]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
+  const paginatedEvents = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredEvents.slice(start, start + itemsPerPage);
+  }, [filteredEvents, currentPage, itemsPerPage]);
 
   const hasFilters = selectedType || searchQuery;
 
@@ -114,48 +131,59 @@ export function EventList({ events }: EventListProps) {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {filteredEvents.map((event) => {
-            const Icon = eventTypeIcons[event.event_type] || eventTypeIcons.default;
-            const colorClass = eventTypeColors[event.event_type] || eventTypeColors.default;
+        <>
+          <div className="space-y-2">
+            {paginatedEvents.map((event) => {
+              const Icon = eventTypeIcons[event.event_type] || eventTypeIcons.default;
+              const colorClass = eventTypeColors[event.event_type] || eventTypeColors.default;
 
-            return (
-              <div
-                key={event.event_id}
-                className="flex items-start gap-3 rounded-lg border border-theme bg-theme-primary p-3 hover:bg-theme-card transition-colors"
-              >
-                <div className={`rounded-md p-2 ${colorClass}`}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-sm text-theme-primary truncate">
-                      {event.event_type}
-                    </span>
-                    <span className="text-xs text-theme-secondary whitespace-nowrap">
-                      {formatRelativeTime(event.timestamp)}
-                    </span>
+              return (
+                <div
+                  key={event.event_id}
+                  className="flex items-start gap-3 rounded-lg border border-theme bg-theme-primary p-3 hover:bg-theme-card transition-colors"
+                >
+                  <div className={`rounded-md p-2 ${colorClass}`}>
+                    <Icon className="h-4 w-4" />
                   </div>
-                  {event.payload?.tool_name && (
-                    <p className="text-sm text-blue-400 mt-1">
-                      Tool: {event.payload.tool_name}
-                    </p>
-                  )}
-                  {event.payload?.message && (
-                    <p className="text-sm text-theme-secondary mt-1 truncate">
-                      {event.payload.message}
-                    </p>
-                  )}
-                  {event.session_id && (
-                    <p className="text-xs text-theme-secondary opacity-70 mt-1">
-                      Session: {event.session_id.slice(0, 8)}...
-                    </p>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-sm text-theme-primary truncate">
+                        {event.event_type}
+                      </span>
+                      <span className="text-xs text-theme-secondary whitespace-nowrap">
+                        {formatRelativeTime(event.timestamp)}
+                      </span>
+                    </div>
+                    {event.payload?.tool_name && (
+                      <p className="text-sm text-blue-400 mt-1">
+                        Tool: {event.payload.tool_name}
+                      </p>
+                    )}
+                    {event.payload?.message && (
+                      <p className="text-sm text-theme-secondary mt-1 truncate">
+                        {event.payload.message}
+                      </p>
+                    )}
+                    {event.session_id && (
+                      <p className="text-xs text-theme-secondary opacity-70 mt-1">
+                        Session: {event.session_id.slice(0, 8)}...
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredEvents.length}
+            itemsPerPage={itemsPerPage}
+          />
+        </>
       )}
     </div>
   );

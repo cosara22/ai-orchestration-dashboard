@@ -79,3 +79,57 @@ CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tool_executions_session_id ON tool_executions(session_id);
 CREATE INDEX IF NOT EXISTS idx_metrics_metric_name ON metrics(metric_name);
 CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
+
+-- Agents table: Tracks AI agent instances
+CREATE TABLE IF NOT EXISTS agents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    type TEXT DEFAULT 'default',
+    status TEXT DEFAULT 'idle',
+    current_task_id TEXT,
+    state TEXT,
+    metrics TEXT,
+    last_heartbeat TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (current_task_id) REFERENCES tasks(task_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agents_status ON agents(status);
+CREATE INDEX IF NOT EXISTS idx_agents_last_heartbeat ON agents(last_heartbeat);
+
+-- Alerts table: Stores alert configurations
+CREATE TABLE IF NOT EXISTS alerts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    alert_id TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    type TEXT NOT NULL,           -- 'threshold', 'pattern', 'anomaly'
+    target TEXT NOT NULL,         -- 'sessions', 'events', 'tasks', 'agents'
+    condition TEXT NOT NULL,      -- JSON: { field, operator, value }
+    severity TEXT DEFAULT 'warning', -- 'info', 'warning', 'critical'
+    enabled INTEGER DEFAULT 1,
+    cooldown_minutes INTEGER DEFAULT 5,
+    last_triggered TEXT,
+    trigger_count INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Alert history table: Logs triggered alerts
+CREATE TABLE IF NOT EXISTS alert_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    alert_id TEXT NOT NULL,
+    triggered_at TEXT NOT NULL,
+    resolved_at TEXT,
+    status TEXT DEFAULT 'active', -- 'active', 'acknowledged', 'resolved'
+    details TEXT,                  -- JSON: trigger context
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (alert_id) REFERENCES alerts(alert_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_alerts_enabled ON alerts(enabled);
+CREATE INDEX IF NOT EXISTS idx_alerts_type ON alerts(type);
+CREATE INDEX IF NOT EXISTS idx_alert_history_alert_id ON alert_history(alert_id);
+CREATE INDEX IF NOT EXISTS idx_alert_history_status ON alert_history(status);

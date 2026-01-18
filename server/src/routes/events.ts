@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { getDb } from "../lib/db";
 import { publishEvent, CHANNELS } from "../lib/redis";
 import { broadcastToClients } from "../ws/handler";
+import { evaluateAlertsForEvent } from "../lib/alertEvaluator";
 
 export const eventsRouter = new Hono();
 
@@ -54,6 +55,13 @@ eventsRouter.post("/", async (c) => {
       type: "event",
       data: event,
     });
+
+    // Evaluate alerts for this event (non-blocking)
+    evaluateAlertsForEvent({
+      event_type: validatedData.event_type,
+      session_id: validatedData.session_id,
+      payload: validatedData.payload,
+    }).catch((err) => console.error("Alert evaluation error:", err));
 
     return c.json({ success: true, event }, 201);
   } catch (error) {

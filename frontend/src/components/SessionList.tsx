@@ -5,9 +5,11 @@ import { Session } from "@/lib/api";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import { Circle, CheckCircle2, XCircle, X } from "lucide-react";
 import { SessionDetail } from "./SessionDetail";
+import { Pagination } from "./Pagination";
 
 interface SessionListProps {
   sessions: Session[];
+  itemsPerPage?: number;
 }
 
 const statusConfig = {
@@ -31,15 +33,30 @@ const statusConfig = {
   },
 };
 
-export function SessionList({ sessions }: SessionListProps) {
+const DEFAULT_ITEMS_PER_PAGE = 10;
+
+export function SessionList({ sessions, itemsPerPage = DEFAULT_ITEMS_PER_PAGE }: SessionListProps) {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Filter sessions
   const filteredSessions = useMemo(() => {
     if (!selectedStatus) return sessions;
     return sessions.filter((s) => s.status === selectedStatus);
   }, [sessions, selectedStatus]);
+
+  // Reset to page 1 when filter changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [selectedStatus]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredSessions.length / itemsPerPage);
+  const paginatedSessions = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredSessions.slice(start, start + itemsPerPage);
+  }, [filteredSessions, currentPage, itemsPerPage]);
 
   return (
     <div className="space-y-3">
@@ -83,40 +100,51 @@ export function SessionList({ sessions }: SessionListProps) {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {filteredSessions.map((session) => {
-            const config = statusConfig[session.status];
-            const Icon = config.icon;
+        <>
+          <div className="space-y-2">
+            {paginatedSessions.map((session) => {
+              const config = statusConfig[session.status];
+              const Icon = config.icon;
 
-            return (
-              <div
-                key={session.session_id}
-                onClick={() => setSelectedSession(session)}
-                className="flex items-center gap-3 rounded-lg border border-theme bg-theme-primary p-3 hover:bg-theme-card transition-colors cursor-pointer"
-              >
-                <div className={cn("rounded-full p-1", config.bgColor)}>
-                  <Icon className={cn("h-4 w-4", config.color)} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-sm text-theme-primary truncate">
-                      {session.session_id.slice(0, 12)}...
-                    </span>
-                    <span className={cn("text-xs px-2 py-0.5 rounded-full", config.bgColor, config.color)}>
-                      {config.label}
-                    </span>
+              return (
+                <div
+                  key={session.session_id}
+                  onClick={() => setSelectedSession(session)}
+                  className="flex items-center gap-3 rounded-lg border border-theme bg-theme-primary p-3 hover:bg-theme-card transition-colors cursor-pointer"
+                >
+                  <div className={cn("rounded-full p-1", config.bgColor)}>
+                    <Icon className={cn("h-4 w-4", config.color)} />
                   </div>
-                  <div className="flex items-center gap-4 mt-1 text-xs text-theme-secondary">
-                    <span>Started {formatRelativeTime(session.start_time)}</span>
-                    {session.end_time && (
-                      <span>Ended {formatRelativeTime(session.end_time)}</span>
-                    )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-sm text-theme-primary truncate">
+                        {session.session_id.slice(0, 12)}...
+                      </span>
+                      <span className={cn("text-xs px-2 py-0.5 rounded-full", config.bgColor, config.color)}>
+                        {config.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 mt-1 text-xs text-theme-secondary">
+                      <span>Started {formatRelativeTime(session.start_time)}</span>
+                      {session.end_time && (
+                        <span>Ended {formatRelativeTime(session.end_time)}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredSessions.length}
+            itemsPerPage={itemsPerPage}
+          />
+        </>
       )}
 
       {/* Session Detail Modal */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { api, Event, Session, MetricsSummary } from "@/lib/api";
+import { api, Event, Session, MetricsSummary, Agent, AgentCounts } from "@/lib/api";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { StatusCard } from "@/components/StatusCard";
 import { EventList } from "@/components/EventList";
@@ -10,13 +10,18 @@ import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { TimelineChart } from "@/components/TimelineChart";
 import { ProjectSelector } from "@/components/ProjectSelector";
 import { TaskPanel } from "@/components/TaskPanel";
+import { AgentPanel } from "@/components/AgentPanel";
+import { AlertPanel } from "@/components/AlertPanel";
 import { ExportButton } from "@/components/ExportButton";
 import { SettingsModal } from "@/components/SettingsModal";
-import { Activity, RefreshCw, AlertTriangle, X, Settings } from "lucide-react";
+import { SearchModal } from "@/components/SearchModal";
+import { Activity, RefreshCw, AlertTriangle, X, Settings, Search } from "lucide-react";
+import { useToast } from "@/components/Toast";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4000/ws";
 
 export default function DashboardPage() {
+  const toast = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
@@ -27,6 +32,9 @@ export default function DashboardPage() {
   const [showError, setShowError] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [agentCounts, setAgentCounts] = useState<AgentCounts>({ active: 0, idle: 0, error: 0, total: 0 });
 
   const handleWSMessage = useCallback((message: any) => {
     if (message.type === "event") {
@@ -41,8 +49,33 @@ export default function DashboardPage() {
           )
         );
       }
+    } else if (message.type === "agent") {
+      if (message.action === "created") {
+        setAgents((prev) => [message.data, ...prev]);
+        setAgentCounts((prev) => ({
+          ...prev,
+          [message.data.status]: prev[message.data.status as keyof AgentCounts] + 1,
+          total: prev.total + 1,
+        }));
+      } else if (message.action === "updated") {
+        setAgents((prev) =>
+          prev.map((a) =>
+            a.agent_id === message.data.agent_id ? message.data : a
+          )
+        );
+      } else if (message.action === "deleted") {
+        setAgents((prev) => prev.filter((a) => a.agent_id !== message.data.agent_id));
+      }
+    } else if (message.type === "alert_triggered") {
+      // Show toast notification for triggered alerts
+      const severity = message.data.severity as string;
+      const toastType = severity === "critical" ? "error" : severity === "warning" ? "warning" : "info";
+      toast[toastType](
+        `Alert: ${message.data.name}`,
+        `Severity: ${severity}`
+      );
     }
-  }, []);
+  }, [toast]);
 
   const { isConnected } = useWebSocket(WS_URL, {
     onMessage: handleWSMessage,
@@ -50,15 +83,18 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [eventsRes, sessionsRes, metricsRes] = await Promise.all([
+      const [eventsRes, sessionsRes, metricsRes, agentsRes] = await Promise.all([
         api.getEvents({ limit: 50, project: selectedProject || undefined }),
         api.getSessions({ limit: 20, project: selectedProject || undefined }),
         api.getMetricsSummary(),
+        api.getAgents({ limit: 50 }),
       ]);
 
       setEvents(eventsRes.events);
       setSessions(sessionsRes.sessions);
       setMetrics(metricsRes);
+      setAgents(agentsRes.agents);
+      setAgentCounts(agentsRes.counts);
       setApiStatus("ok");
       setLastUpdated(new Date());
       setShowError(false);
@@ -82,6 +118,18 @@ export default function DashboardPage() {
     const interval = setInterval(fetchData, 30000); // Refresh every 30s
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  // Keyboard shortcut for search (Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const formatLastUpdated = () => {
     if (!lastUpdated) return "";
@@ -121,6 +169,17 @@ export default function DashboardPage() {
               </h1>
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowSearch(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-theme-card border border-theme hover:bg-theme-primary transition-colors"
+                title="Search (Ctrl+K)"
+              >
+                <Search className="h-4 w-4 text-theme-secondary" />
+                <span className="text-sm text-theme-secondary hidden sm:inline">Search...</span>
+                <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono bg-theme-primary rounded border border-theme text-theme-secondary">
+                  Ctrl+K
+                </kbd>
+              </button>
               <ProjectSelector
                 selectedProject={selectedProject}
                 onProjectChange={setSelectedProject}
@@ -160,12 +219,19 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-6">
             {/* Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <StatusCard
                 title="Active Sessions"
                 value={metrics?.sessions.active || 0}
                 subtitle="currently running"
                 status="success"
+                icon="activity"
+              />
+              <StatusCard
+                title="Active Agents"
+                value={agentCounts.active}
+                subtitle={`${agentCounts.total} registered`}
+                status={agentCounts.active > 0 ? "success" : "info"}
                 icon="activity"
               />
               <StatusCard
@@ -194,8 +260,8 @@ export default function DashboardPage() {
             {/* Timeline Chart */}
             <TimelineChart />
 
-            {/* Three-column layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main panels - 3 columns */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {/* Events Panel */}
               <div className="rounded-lg border border-theme bg-theme-card">
                 <div className="border-b border-theme px-4 py-3">
@@ -219,6 +285,28 @@ export default function DashboardPage() {
               {/* Tasks Panel */}
               <TaskPanel selectedProject={selectedProject} />
             </div>
+
+            {/* Secondary panels - 2 columns */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Agents Panel */}
+              <AgentPanel
+                agents={agents}
+                counts={agentCounts}
+                onAgentsChange={(newAgents) => {
+                  setAgents(newAgents);
+                  const counts = { active: 0, idle: 0, error: 0, total: newAgents.length };
+                  newAgents.forEach((a) => {
+                    if (a.status in counts) {
+                      counts[a.status as keyof typeof counts]++;
+                    }
+                  });
+                  setAgentCounts(counts);
+                }}
+              />
+
+              {/* Alerts Panel */}
+              <AlertPanel />
+            </div>
           </div>
         )}
       </main>
@@ -234,6 +322,9 @@ export default function DashboardPage() {
 
       {/* Settings Modal */}
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+
+      {/* Search Modal */}
+      <SearchModal isOpen={showSearch} onClose={() => setShowSearch(false)} />
     </div>
   );
 }

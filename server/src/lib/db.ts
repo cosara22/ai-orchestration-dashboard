@@ -82,6 +82,112 @@ function migrateTasksTable() {
 
 migrateTasksTable();
 
+// Auto-migrate: Create agents table if not exists
+function migrateAgentsTable() {
+  try {
+    // Check if agents table exists
+    const tableExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='agents'"
+    ).get();
+
+    if (!tableExists) {
+      console.log("Migrating: Creating agents table...");
+      db.exec(`
+        CREATE TABLE agents (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          agent_id TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          type TEXT DEFAULT 'default',
+          status TEXT DEFAULT 'idle',
+          current_task_id TEXT,
+          state TEXT,
+          metrics TEXT,
+          last_heartbeat TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (current_task_id) REFERENCES tasks(task_id)
+        )
+      `);
+
+      db.exec("CREATE INDEX IF NOT EXISTS idx_agents_status ON agents(status)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_agents_last_heartbeat ON agents(last_heartbeat)");
+
+      console.log("Agents table created.");
+    }
+  } catch (error) {
+    console.error("Agents migration error:", error);
+  }
+}
+
+migrateAgentsTable();
+
+// Auto-migrate: Create alerts tables if not exists
+function migrateAlertsTable() {
+  try {
+    // Check if alerts table exists
+    const tableExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='alerts'"
+    ).get();
+
+    if (!tableExists) {
+      console.log("Migrating: Creating alerts table...");
+      db.exec(`
+        CREATE TABLE alerts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          alert_id TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT,
+          type TEXT NOT NULL,
+          target TEXT NOT NULL,
+          condition TEXT NOT NULL,
+          severity TEXT DEFAULT 'warning',
+          enabled INTEGER DEFAULT 1,
+          cooldown_minutes INTEGER DEFAULT 5,
+          last_triggered TEXT,
+          trigger_count INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+
+      db.exec("CREATE INDEX IF NOT EXISTS idx_alerts_enabled ON alerts(enabled)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_alerts_type ON alerts(type)");
+
+      console.log("Alerts table created.");
+    }
+
+    // Check if alert_history table exists
+    const historyExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='alert_history'"
+    ).get();
+
+    if (!historyExists) {
+      console.log("Migrating: Creating alert_history table...");
+      db.exec(`
+        CREATE TABLE alert_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          alert_id TEXT NOT NULL,
+          triggered_at TEXT NOT NULL,
+          resolved_at TEXT,
+          status TEXT DEFAULT 'active',
+          details TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (alert_id) REFERENCES alerts(alert_id)
+        )
+      `);
+
+      db.exec("CREATE INDEX IF NOT EXISTS idx_alert_history_alert_id ON alert_history(alert_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_alert_history_status ON alert_history(status)");
+
+      console.log("Alert history table created.");
+    }
+  } catch (error) {
+    console.error("Alerts migration error:", error);
+  }
+}
+
+migrateAlertsTable();
+
 export function getDb() {
   return db;
 }
