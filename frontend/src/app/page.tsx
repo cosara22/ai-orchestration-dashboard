@@ -11,7 +11,8 @@ import { TimelineChart } from "@/components/TimelineChart";
 import { ProjectSelector } from "@/components/ProjectSelector";
 import { TaskPanel } from "@/components/TaskPanel";
 import { ExportButton } from "@/components/ExportButton";
-import { Activity, RefreshCw, AlertTriangle, X } from "lucide-react";
+import { SettingsModal } from "@/components/SettingsModal";
+import { Activity, RefreshCw, AlertTriangle, X, Settings } from "lucide-react";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4000/ws";
 
@@ -25,6 +26,7 @@ export default function DashboardPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showError, setShowError] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleWSMessage = useCallback((message: any) => {
     if (message.type === "event") {
@@ -137,6 +139,13 @@ export default function DashboardPage() {
               >
                 <RefreshCw className="h-4 w-4 text-gray-400" />
               </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 rounded-md hover:bg-gray-800 transition-colors"
+                title="Settings"
+              >
+                <Settings className="h-4 w-4 text-gray-400" />
+              </button>
             </div>
           </div>
         </div>
@@ -222,6 +231,9 @@ export default function DashboardPage() {
           </p>
         </div>
       </footer>
+
+      {/* Settings Modal */}
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 }

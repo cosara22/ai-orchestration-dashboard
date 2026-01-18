@@ -107,6 +107,23 @@ Claude Code Hooks を活用したリアルタイムモニタリングダッシ�
 
 ---
 
+### Phase 6: 設定画面 - Priority 5 (完了)
+
+**完了日**: 2026-01-19
+
+| 項目 | 状態 | 成果物 |
+|------|------|--------|
+| 設定モーダル | 完了 | `SettingsModal.tsx` |
+| localStorage 永続化 | 完了 | `loadSettings()`, `saveSettings()` |
+| ヘッダー設定ボタン | 完了 | `page.tsx` |
+
+**設定項目**:
+- **Display**: リフレッシュ間隔、表示件数、タイムスタンプ表示
+- **Notifications**: 通知有効/無効、エラー通知、セッション終了通知
+- **Connection**: API URL、WebSocket URL
+
+---
+
 ## 3. 実装済みコンポーネント一覧
 
 ### 3.1 Frontend (`frontend/src/`)
@@ -130,7 +147,8 @@ components/
 ├── Toast.tsx           # トースト通知システム
 ├── Providers.tsx       # クライアントプロバイダー
 ├── Modal.tsx           # 汎用モーダル
-└── ExportButton.tsx    # CSVエクスポート
+├── ExportButton.tsx    # CSVエクスポート
+└── SettingsModal.tsx   # 設定画面
 
 hooks/
 └── useWebSocket.ts     # WebSocket 接続フック
@@ -189,23 +207,18 @@ ws/
 
 ## 5. ネクストアクション
 
-### 5.1 Priority 5: 運用機能 (未着手)
+### 5.1 Priority 6: 拡張機能 (未着手)
 
 | 機能 | 優先度 | 説明 |
 |------|--------|------|
-| 設定画面 | Medium | ダッシュボード設定 UI |
-| ダークモード切替 | Low | テーマ切替機能 |
-
-### 5.2 Priority 6: 拡張機能 (未着手)
-
-| 機能 | 優先度 | 説明 |
-|------|--------|------|
+| ダークモード切替 | Medium | テーマ切替機能（現在はダークのみ） |
 | エージェント管理画面 | Medium | エージェント状態の詳細表示 |
 | ログ検索 | Medium | 全文検索機能 |
 | アラート設定 | Low | 閾値ベースの通知 |
 | API 認証 | Low | Bearer トークン認証 |
+| ページネーション UI | Low | イベント・セッションの大量データ対応 |
 
-### 5.3 Hooks 使用方法
+### 5.2 Hooks 使用方法
 
 ```bash
 # 1. settings.json.example を ~/.claude/settings.json にマージ
@@ -216,6 +229,14 @@ echo '{"session_id":"test"}' | python hooks/send_event.py PostToolUse
 curl http://localhost:4000/api/events?limit=1
 ```
 
+### 5.3 設定画面の使用方法
+
+1. ヘッダー右端の歯車アイコンをクリック
+2. Display / Notifications / Connection タブで設定を変更
+3. 「Save Changes」で保存（ページリロードで適用）
+
+設定は localStorage に保存され、ブラウザを閉じても維持されます。
+
 ### 5.4 推奨実装順序
 
 ```
@@ -224,12 +245,10 @@ curl http://localhost:4000/api/events?limit=1
    ├── Frontend: npm run dev
    └── 実際の Claude Code セッションでの動作確認
 
-2. 設定画面の実装
-   ├── 接続設定
-   └── 表示設定
-
-3. 追加機能の実装
-   └── 優先度に応じて順次実装
+2. 追加機能の実装
+   ├── ダークモード切替（優先度: Medium）
+   ├── エージェント管理画面
+   └── その他は優先度に応じて順次実装
 ```
 
 ---
@@ -281,4 +300,4 @@ REDIS_URL=redis://localhost:6379
 ---
 
 **最終更新**: 2026-01-19
-**次回レビュー予定**: Hooks 統合完了後
+**次回レビュー予定**: 拡張機能実装時
