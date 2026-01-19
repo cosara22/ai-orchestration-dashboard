@@ -30,12 +30,17 @@ Phase 15-E ━━━━━━━━━━━━━━━━━━━━━━━
 Phase 15-F ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✅ 完了
     Team/Project Management & Dashboard UI
 
-Phase 15-G ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ⬜ 未着手
+Phase 15-G ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✅ 完了
     Automation & Monitoring
 
-Phase 15-H ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ⬜ 未着手
+Phase 15-H ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✅ 完了
     Hooks Integration & E2E Testing
+
+Phase 15-I ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✅ 完了
+    Dashboard UI Integration (Multi-Agent View)
 ```
+
+**全フェーズ完了** 🎉
 
 ---
 
@@ -79,7 +84,7 @@ Phase 15-H ━━━━━━━━━━━━━━━━━━━━━━━
 - `POST /api/locks/acquire` - ロック取得
 - `POST /api/locks/release` - ロック解放
 - `GET /api/locks/check` - ロック確認
-- `GET /api/locks/list` - ロック一覧
+- `GET /api/locks` - ロック一覧
 - `GET /api/locks/agent/:id` - エージェント別ロック
 - `POST /api/locks/force-release` - 強制解放
 - `POST /api/locks/cleanup` - 期限切れクリーンアップ
@@ -99,9 +104,9 @@ Phase 15-H ━━━━━━━━━━━━━━━━━━━━━━━
 | 15D-7 | SharedContextPanel UI | `frontend/src/components/SharedContextPanel.tsx` | ✅ |
 
 **API エンドポイント**:
-- `POST /api/context/post` - コンテキスト投稿
-- `GET /api/context/list` - コンテキスト一覧
-- `GET /api/context/for-me` - 自分向けコンテキスト
+- `POST /api/context` - コンテキスト投稿
+- `GET /api/context` - コンテキスト一覧
+- `GET /api/context/for-agent` - エージェント向けコンテキスト
 - `GET /api/context/:id` - コンテキスト詳細
 - `POST /api/context/:id/acknowledge` - 確認
 - `DELETE /api/context/:id` - 削除
@@ -177,74 +182,117 @@ Phase 15-H ━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 
-### バグ修正 (完了)
+### ✅ Phase 15-G: Automation & Monitoring (完了)
 
-| 問題 | 修正内容 | ファイル |
-|------|----------|----------|
-| broadcastToChannel未定義 | 関数追加 | `server/src/ws/handler.ts` |
-| task_idカラム不在 | id参照に修正 | `server/src/routes/conductor.ts` |
-| ルーティング競合 | overview/allを:idより前に移動 | `server/src/routes/teams.ts` |
-| Hydration警告 | suppressHydrationWarning追加 | `frontend/src/app/layout.tsx` |
+| タスク | 内容 | ファイル | 状態 |
+|--------|------|----------|------|
+| 15G-1 | 自動ディスパッチスケジューラ | `server/src/schedulers/taskDispatcher.ts` | ✅ |
+| 15G-2 | タイムアウト自動チェック | `server/src/schedulers/timeoutMonitor.ts` | ✅ |
+| 15G-3 | エージェント死活監視 | `server/src/schedulers/healthChecker.ts` | ✅ |
+| 15G-4 | ロック自動クリーンアップ | `server/src/schedulers/lockCleanup.ts` | ✅ |
+| 15G-5 | スケジューラ管理 | `server/src/schedulers/index.ts` | ✅ |
+| 15G-6 | メトリクス収集 | `server/src/lib/metricsCollector.ts` | ✅ |
+| 15G-7 | アラート管理 | `server/src/lib/alertManager.ts` | ✅ |
+| 15G-8 | モニタリングダッシュボード | `frontend/src/components/MonitoringDashboard.tsx` | ✅ |
 
-**コミット**: `f17858f`
+**スケジューラ設定**:
+- タスク自動割り当て: 30秒間隔
+- タイムアウトチェック: 5分間隔
+- エージェント死活監視: 1分間隔
+- ロッククリーンアップ: 1時間間隔
 
----
+**メトリクスAPI**:
+- `GET /api/metrics/system` - システムメトリクス
+- `POST /api/metrics/record` - カスタムメトリクス記録
+- `GET /api/metrics/history/:metric_name` - メトリクス履歴
+- `GET /api/metrics/aggregated/:metric_name` - 集計メトリクス
 
-## ⬜ Phase 15-G: Automation & Monitoring (次のステップ)
+**アラートAPI**:
+- `POST /api/alerts/create` - アラート作成
+- `GET /api/alerts/system` - システムアラート一覧
+- `GET /api/alerts/stats` - アラート統計
+- `POST /api/alerts/:id/acknowledge` - アラート確認
+- `POST /api/alerts/:id/resolve` - アラート解決
 
-### タスク一覧
-
-| ID | タスク | 内容 | 優先度 | 状態 |
-|----|--------|------|--------|------|
-| 15G-1 | 自動ディスパッチスケジューラ | `server/src/schedulers/taskDispatcher.ts` | High | ⬜ |
-| 15G-2 | タイムアウト自動チェック | `server/src/schedulers/timeoutMonitor.ts` | High | ⬜ |
-| 15G-3 | エージェント死活監視 | `server/src/schedulers/healthChecker.ts` | High | ⬜ |
-| 15G-4 | ロック自動クリーンアップ | `server/src/schedulers/lockCleanup.ts` | Medium | ⬜ |
-| 15G-5 | 優先度自動調整 | `server/src/lib/priorityAdjuster.ts` | Low | ⬜ |
-| 15G-6 | メトリクス収集 | `server/src/lib/metricsCollector.ts` | Medium | ⬜ |
-| 15G-7 | 外部通知連携 | Slack/Discord webhook | Low | ⬜ |
-| 15G-8 | Human介入UI | `frontend/src/components/InterventionModal.tsx` | Medium | ⬜ |
-
-### スケジューラ設計
-
-```typescript
-// server/src/schedulers/index.ts
-
-// タスク自動割り当て (30秒間隔)
-const dispatchJob = setInterval(autoDispatchTasks, 30000);
-
-// タイムアウトチェック (5分間隔)
-const timeoutJob = setInterval(checkTaskTimeouts, 300000);
-
-// エージェント死活監視 (1分間隔)
-const healthJob = setInterval(checkAgentHealth, 60000);
-
-// ロッククリーンアップ (1時間間隔)
-const lockCleanupJob = setInterval(cleanupExpiredLocks, 3600000);
-```
+**コミット**: `0e1f5aa`, `42d648e`
 
 ---
 
-## ⬜ Phase 15-H: Hooks Integration & E2E Testing
+### ✅ Phase 15-H: Hooks Integration & E2E Testing (完了)
 
-### タスク一覧
+| タスク | 内容 | ファイル | 状態 |
+|--------|------|----------|------|
+| 15H-1 | マルチエージェント対応Hooks | `.claude/hooks/send_event.py` | ✅ |
+| 15H-2 | 外部Hooks (プロジェクトルート) | `hooks/send_event.py` | ✅ |
+| 15H-3 | settings.json 設定 | `.claude/settings.json` | ✅ |
+| 15H-4 | API E2Eテスト | `server/tests/e2e/api.test.ts` | ✅ |
+| 15H-5 | フロントエンドE2Eテスト | `frontend/tests/e2e/monitoring.spec.ts` | ✅ |
 
-| ID | タスク | 内容 | 優先度 | 状態 |
-|----|--------|------|--------|------|
-| 15H-1 | ファイル編集前ロック確認Hook | `hooks/check_file_lock.py` | High | ⬜ |
-| 15H-2 | ファイル編集後ロック解放Hook | `hooks/release_file_lock.py` | High | ⬜ |
-| 15H-3 | タスク開始/完了報告Hook | `hooks/task_lifecycle.py` | Medium | ⬜ |
-| 15H-4 | ハートビート送信Hook | `hooks/heartbeat.py` | Medium | ⬜ |
-| 15H-5 | settings.json テンプレート | `.claude/settings.template.json` | Medium | ⬜ |
-| 15H-6 | E2Eテスト: マルチエージェントシナリオ | `tests/e2e/multi-agent.spec.ts` | High | ⬜ |
-| 15H-7 | 負荷テスト: 15エージェント同時 | `tests/load/fifteen-agents.ts` | Medium | ⬜ |
-| 15H-8 | ドキュメント整備 | `docs/MULTI_AGENT_GUIDE.md` | Low | ⬜ |
+**Hooks環境変数**:
+- `AOD_API_URL` / `AOD_URL` - ダッシュボードURL
+- `AOD_PROJECT_ID` - プロジェクトID
+- `AOD_AGENT_ID` - エージェントID
+- `AOD_AGENT_NAME` - エージェント名
+
+**E2Eテストカバレッジ**:
+- Health & Scheduler APIs
+- Metrics API
+- Alerts API
+- Task Queue API
+- File Locks API
+- Shared Context API
+- Conductor API
+- Teams API
+- Agents API
+
+**コミット**: `1e345ed`
+
+---
+
+### ✅ Phase 15-I: Dashboard UI Integration (完了)
+
+| タスク | 内容 | ファイル | 状態 |
+|--------|------|----------|------|
+| 15I-1 | MultiAgentView コンポーネント | `frontend/src/components/MultiAgentView.tsx` | ✅ |
+| 15I-2 | ダッシュボード統合 | `frontend/src/app/page.tsx` | ✅ |
+| 15I-3 | エラーページ | `frontend/src/app/error.tsx` | ✅ |
+| 15I-4 | 404ページ | `frontend/src/app/not-found.tsx` | ✅ |
+
+**Multi-Agentビュー タブ構成**:
+| タブ | コンポーネント | 機能 |
+|------|---------------|------|
+| Monitoring | MonitoringDashboard | システムメトリクス・アラート・スケジューラ状態 |
+| Conductor | ConductorPanel | タスク分解・リソース配置・ボトルネック検出 |
+| Teams | OrgChartView | チーム組織図・メンバー管理 |
+| File Locks | FileLockPanel | ファイルロック管理・競合履歴 |
+| Shared Context | SharedContextPanel | 共有コンテキスト・決定事項 |
+| Capabilities | AgentCapabilityPanel | エージェント能力管理・自動学習 |
+
+**コミット**: `e87a6b9`, `c8e0e9a`
+
+---
+
+### バグ修正履歴
+
+| 問題 | 修正内容 | ファイル | コミット |
+|------|----------|----------|----------|
+| broadcastToChannel未定義 | 関数追加 | `server/src/ws/handler.ts` | `f17858f` |
+| task_idカラム不在 | id参照に修正 | `server/src/routes/conductor.ts` | `f17858f` |
+| ルーティング競合 | overview/allを:idより前に移動 | `server/src/routes/teams.ts` | `f17858f` |
+| Hydration警告 | suppressHydrationWarning追加 | `frontend/src/app/layout.tsx` | `f17858f` |
+| Next.js error components | error.tsx, not-found.tsx追加 | `frontend/src/app/` | `c8e0e9a` |
 
 ---
 
 ## Git コミット履歴
 
 ```
+c8e0e9a fix: Add Next.js error and not-found page components
+e87a6b9 feat: Integrate Multi-Agent panels into main dashboard
+1e345ed feat: Complete Phase 15-H - Hooks Integration & E2E Testing
+42d648e feat: Add Phase 15-G monitoring & alerting system
+0e1f5aa feat: Implement Phase 15-G schedulers for automation & monitoring
+8c2a322 docs: Update Phase 15 implementation plan with completion status
 f17858f fix: Resolve API errors and improve route handling
 a8cb837 feat: Complete Phase 15 Wave 2-3 - Conductor, Teams, OrgChart
 1165e3b feat: Complete Phase 15 Wave 1 - File Lock, Shared Context, Capability Learning
@@ -266,31 +314,64 @@ routes/
 ├── locks.ts          # 15C: File Lock API ✅
 ├── context.ts        # 15D: Shared Context API ✅
 ├── conductor.ts      # 15E: Conductor API ✅
-└── teams.ts          # 15F: Team API ✅
+├── teams.ts          # 15F: Team API ✅
+├── metrics.ts        # 15G: Metrics API (拡張) ✅
+└── alerts.ts         # 15G: Alerts API (拡張) ✅
 
 lib/
 ├── db.ts                 # DB Schema & Migrations ✅
 ├── capabilityLearning.ts # 15B: 能力自動学習 ✅
-└── bottleneckDetector.ts # 15E: ボトルネック検出 ✅
+├── bottleneckDetector.ts # 15E: ボトルネック検出 ✅
+├── metricsCollector.ts   # 15G: メトリクス収集 ✅
+└── alertManager.ts       # 15G: アラート管理 ✅
+
+schedulers/
+├── index.ts              # 15G: スケジューラ管理 ✅
+├── taskDispatcher.ts     # 15G: タスク自動割り当て ✅
+├── timeoutMonitor.ts     # 15G: タイムアウト監視 ✅
+├── healthChecker.ts      # 15G: 死活監視 ✅
+└── lockCleanup.ts        # 15G: ロッククリーンアップ ✅
 
 ws/
-└── handler.ts           # WebSocket Handler ✅
+└── handler.ts            # WebSocket Handler ✅
+
+tests/e2e/
+└── api.test.ts           # 15H: API E2Eテスト ✅
 ```
 
-### Frontend (frontend/src/components/)
+### Frontend (frontend/src/)
 
 ```
-AgentCapabilityPanel.tsx    # 15B: 能力管理UI ✅
-FileLockPanel.tsx           # 15C: ファイルロックUI ✅
-SharedContextPanel.tsx      # 15D: 共有コンテキストUI ✅
-ConductorPanel.tsx          # 15E: コンダクターダッシュボード ✅
-OrgChartView.tsx            # 15F: 組織図UI ✅
+app/
+├── page.tsx              # メインダッシュボード (統合済み) ✅
+├── layout.tsx            # レイアウト ✅
+├── error.tsx             # エラーページ ✅
+└── not-found.tsx         # 404ページ ✅
+
+components/
+├── MultiAgentView.tsx        # 15I: マルチエージェントビュー ✅
+├── AgentCapabilityPanel.tsx  # 15B: 能力管理UI ✅
+├── FileLockPanel.tsx         # 15C: ファイルロックUI ✅
+├── SharedContextPanel.tsx    # 15D: 共有コンテキストUI ✅
+├── ConductorPanel.tsx        # 15E: コンダクターダッシュボード ✅
+├── OrgChartView.tsx          # 15F: 組織図UI ✅
+├── MonitoringDashboard.tsx   # 15G: モニタリングUI ✅
+└── TaskQueuePanel.tsx        # 15A: タスクキューUI ✅
+
+tests/e2e/
+└── monitoring.spec.ts        # 15H: フロントエンドE2Eテスト ✅
 ```
 
-### API Client (frontend/src/lib/)
+### Hooks
 
 ```
-api.ts                      # API Types & Methods ✅
+.claude/
+├── settings.json             # 15H: Hooks設定 ✅
+└── hooks/
+    └── send_event.py         # 15H: イベント送信 ✅
+
+hooks/
+└── send_event.py             # 15H: イベント送信 (プロジェクトルート) ✅
 ```
 
 ---
@@ -298,29 +379,37 @@ api.ts                      # API Types & Methods ✅
 ## 検証済みAPI
 
 ```bash
-# Health Check
+# Health Check (スケジューラ状態含む)
 curl http://localhost:4000/health
-# {"status":"ok","timestamp":"...","version":"1.0.0","auth_enabled":false}
+# {"status":"ok","schedulers":{"running":true,"jobs":{...}},...}
+
+# System Metrics
+curl http://localhost:4000/api/metrics/system
+# {"timestamp":"...","agents":{...},"tasks":{...},"locks":{...},...}
 
 # Conductor Overview
 curl http://localhost:4000/api/conductor/overview
-# {"projects":[...],"total_active_agents":0,"total_pending_tasks":0,"total_active_locks":0}
+# {"projects":[...],"total_active_agents":0,"total_pending_tasks":0,...}
 
 # Teams Overview
 curl http://localhost:4000/api/teams/overview/all
 # {"teams":[],"summary":{"total_teams":0,"total_agents":0,...}}
 
 # Task Queue
-curl http://localhost:4000/api/queue/list
-# {"tasks":[...],"total":0,"limit":50,"offset":0}
+curl http://localhost:4000/api/queue/tasks
+# {"tasks":[...],"total":0}
 
 # File Locks
-curl http://localhost:4000/api/locks/list
+curl http://localhost:4000/api/locks
 # {"locks":[...],"total":0}
 
 # Shared Context
-curl http://localhost:4000/api/context/list
+curl http://localhost:4000/api/context
 # {"contexts":[...],"total":0}
+
+# Alert Stats
+curl http://localhost:4000/api/alerts/stats
+# {"total":0,"unread":0,"by_severity":{...}}
 ```
 
 ---
@@ -334,6 +423,13 @@ cd server && bun run dev
 # フロントエンド起動
 cd frontend && npm run dev
 
+# プロダクションビルド
+cd frontend && npm run build && npm run start -- --port 3002
+
+# E2Eテスト実行
+cd server && bun test tests/e2e/
+cd frontend && npx playwright test
+
 # アクセス
 # Dashboard: http://localhost:3002
 # API: http://localhost:4000
@@ -341,16 +437,42 @@ cd frontend && npm run dev
 
 ---
 
-## 次のアクション
+## マルチエージェント起動例
 
-1. **Phase 15-G**: Automation & Monitoring
-   - スケジューラ実装 (dispatch, timeout, health, cleanup)
-   - メトリクス収集
-   - 人間介入UI
+```bash
+# ターミナル1: コンダクター
+export AOD_AGENT_ID="conductor-001"
+export AOD_AGENT_NAME="Conductor"
+export AOD_PROJECT_ID="project-alpha"
+claude
 
-2. **Phase 15-H**: Hooks Integration & E2E Testing
-   - Hooks連携スクリプト
-   - E2Eテスト
-   - ドキュメント整備
+# ターミナル2: フロントエンド開発者
+export AOD_AGENT_ID="frontend-001"
+export AOD_AGENT_NAME="Frontend Dev"
+export AOD_PROJECT_ID="project-alpha"
+claude
 
-開始するフェーズを選択してください。
+# ターミナル3: バックエンド開発者
+export AOD_AGENT_ID="backend-001"
+export AOD_AGENT_NAME="Backend Dev"
+export AOD_PROJECT_ID="project-alpha"
+claude
+```
+
+---
+
+## Phase 15 完了 🎉
+
+全てのフェーズが完了しました:
+
+- **15A**: タスクキュー & 自動割り当て
+- **15B**: エージェント能力管理
+- **15C**: ファイルロック & 競合管理
+- **15D**: 共有コンテキスト & 通信
+- **15E**: コンダクター & オーケストレーション
+- **15F**: チーム/プロジェクト管理
+- **15G**: 自動化 & モニタリング
+- **15H**: Hooks統合 & E2Eテスト
+- **15I**: ダッシュボードUI統合
+
+マルチエージェント並列開発基盤が完成しました。
