@@ -1,0 +1,74 @@
+version: '3.8'
+
+# Development configuration with hot reload
+# Usage: docker compose -f docker-compose.dev.yml up
+
+services:
+  # Redis - Cache & Pub/Sub
+  redis:
+    image: redis:7-alpine
+    container_name: aod-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aod-network-dev
+
+  # Backend - Development with hot reload
+  backend:
+    image: oven/bun:1-alpine
+    container_name: aod-backend-dev
+    working_dir: /app
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_PATH=/app/data/aod.db
+    volumes:
+      - ./server:/app
+      - ./data:/app/data
+      - /app/node_modules
+    command: bun run --watch src/index.ts
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - aod-network-dev
+
+  # Frontend - Development with hot reload
+  frontend:
+    image: node:20-alpine
+    container_name: aod-frontend-dev
+    working_dir: /app
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:4000/ws
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "npm install && npm run dev -- -p 3002"
+    depends_on:
+      - backend
+    networks:
+      - aod-network-dev
+
+volumes:
+  redis_data_dev:
+    driver: local
+
+networks:
+  aod-network-dev:
+    driver: bridge
