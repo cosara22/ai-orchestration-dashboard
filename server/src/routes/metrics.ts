@@ -1,8 +1,69 @@
 import { Hono } from "hono";
 import { getDb } from "../lib/db";
 import { redis } from "../lib/redis";
+import { collectMetrics, recordMetric, getMetricHistory, getAggregatedMetrics } from "../lib/metricsCollector";
 
 export const metricsRouter = new Hono();
+
+// GET /api/metrics/system - Get comprehensive system metrics
+metricsRouter.get("/system", async (c) => {
+  try {
+    const metrics = collectMetrics();
+    return c.json(metrics);
+  } catch (error) {
+    console.error("Error collecting system metrics:", error);
+    return c.json({ error: "Failed to collect system metrics" }, 500);
+  }
+});
+
+// POST /api/metrics/record - Record a custom metric
+metricsRouter.post("/record", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { metric_name, value, tags } = body;
+
+    if (!metric_name || value === undefined) {
+      return c.json({ error: "metric_name and value are required" }, 400);
+    }
+
+    recordMetric(metric_name, value, tags);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Error recording metric:", error);
+    return c.json({ error: "Failed to record metric" }, 500);
+  }
+});
+
+// GET /api/metrics/history/:metric_name - Get metric history
+metricsRouter.get("/history/:metric_name", async (c) => {
+  try {
+    const metricName = c.req.param("metric_name");
+    const since = c.req.query("since");
+    const until = c.req.query("until");
+    const limit = parseInt(c.req.query("limit") || "100");
+
+    const history = getMetricHistory(metricName, { since, until, limit });
+    return c.json({ metric_name: metricName, history });
+  } catch (error) {
+    console.error("Error fetching metric history:", error);
+    return c.json({ error: "Failed to fetch metric history" }, 500);
+  }
+});
+
+// GET /api/metrics/aggregated/:metric_name - Get aggregated metrics
+metricsRouter.get("/aggregated/:metric_name", async (c) => {
+  try {
+    const metricName = c.req.param("metric_name");
+    const interval = (c.req.query("interval") || "hour") as "hour" | "day" | "week";
+    const since = c.req.query("since");
+
+    const aggregated = getAggregatedMetrics(metricName, { interval, since });
+    return c.json({ metric_name: metricName, interval, aggregated });
+  } catch (error) {
+    console.error("Error fetching aggregated metrics:", error);
+    return c.json({ error: "Failed to fetch aggregated metrics" }, 500);
+  }
+});
 
 // GET /api/metrics/summary - Get dashboard summary metrics
 metricsRouter.get("/summary", async (c) => {

@@ -1,8 +1,134 @@
 import { Hono } from "hono";
 import { getDb } from "../lib/db";
 import { nanoid } from "nanoid";
+import {
+  createAlert,
+  getAlerts,
+  getAlert,
+  markAlertsRead,
+  acknowledgeAlert,
+  resolveAlert,
+  getAlertStats,
+  type AlertData,
+} from "../lib/alertManager";
 
 export const alertsRouter = new Hono();
+
+// GET /api/alerts/stats - Get alert statistics
+alertsRouter.get("/stats", async (c) => {
+  try {
+    const stats = getAlertStats();
+    return c.json(stats);
+  } catch (error) {
+    console.error("Error fetching alert stats:", error);
+    return c.json({ error: "Failed to fetch alert stats" }, 500);
+  }
+});
+
+// POST /api/alerts/create - Create a new system alert (from alertManager)
+alertsRouter.post("/create", async (c) => {
+  try {
+    const body = await c.req.json() as AlertData;
+
+    if (!body.type || !body.severity || !body.title || !body.message) {
+      return c.json({ error: "type, severity, title, and message are required" }, 400);
+    }
+
+    const alert = await createAlert(body);
+    return c.json({ success: true, alert }, 201);
+  } catch (error) {
+    console.error("Error creating alert:", error);
+    return c.json({ error: "Failed to create alert" }, 500);
+  }
+});
+
+// POST /api/alerts/mark-read - Mark alerts as read
+alertsRouter.post("/mark-read", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { alert_ids } = body;
+
+    if (!alert_ids || !Array.isArray(alert_ids)) {
+      return c.json({ error: "alert_ids array is required" }, 400);
+    }
+
+    const count = markAlertsRead(alert_ids);
+    return c.json({ success: true, marked_read: count });
+  } catch (error) {
+    console.error("Error marking alerts read:", error);
+    return c.json({ error: "Failed to mark alerts read" }, 500);
+  }
+});
+
+// POST /api/alerts/:id/acknowledge - Acknowledge an alert
+alertsRouter.post("/:id/acknowledge", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const { acknowledged_by } = body;
+
+    if (!acknowledged_by) {
+      return c.json({ error: "acknowledged_by is required" }, 400);
+    }
+
+    const success = acknowledgeAlert(id, acknowledged_by);
+    if (!success) {
+      return c.json({ error: "Alert not found or already acknowledged" }, 404);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Error acknowledging alert:", error);
+    return c.json({ error: "Failed to acknowledge alert" }, 500);
+  }
+});
+
+// POST /api/alerts/:id/resolve - Resolve an alert
+alertsRouter.post("/:id/resolve", async (c) => {
+  try {
+    const id = c.req.param("id");
+
+    const success = resolveAlert(id);
+    if (!success) {
+      return c.json({ error: "Alert not found or already resolved" }, 404);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Error resolving alert:", error);
+    return c.json({ error: "Failed to resolve alert" }, 500);
+  }
+});
+
+// GET /api/alerts/system - Get alerts using new alertManager (supports filtering)
+alertsRouter.get("/system", async (c) => {
+  try {
+    const severity = c.req.query("severity") as "low" | "medium" | "high" | "critical" | undefined;
+    const type = c.req.query("type") as any;
+    const project_id = c.req.query("project_id");
+    const agent_id = c.req.query("agent_id");
+    const unread_only = c.req.query("unread_only") === "true";
+    const unresolved_only = c.req.query("unresolved_only") === "true";
+    const limit = parseInt(c.req.query("limit") || "50");
+    const offset = parseInt(c.req.query("offset") || "0");
+
+    const result = getAlerts({
+      severity,
+      type,
+      project_id,
+      agent_id,
+      unread_only,
+      unresolved_only,
+      limit,
+      offset,
+    });
+
+    return c.json(result);
+  } catch (error) {
+    console.error("Error fetching system alerts:", error);
+    return c.json({ error: "Failed to fetch system alerts" }, 500);
+  }
+});
 
 // GET /api/alerts - List all alerts
 alertsRouter.get("/", async (c) => {

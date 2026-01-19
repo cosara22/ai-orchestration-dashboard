@@ -826,6 +826,127 @@ function migrateTeamsTables() {
 
 migrateTeamsTables();
 
+// Auto-migrate: Create monitoring tables (Phase 15-G)
+function migrateMonitoringTables() {
+  try {
+    // Metrics History table
+    const metricsExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='metrics_history'"
+    ).get();
+
+    if (!metricsExists) {
+      console.log("Migrating: Creating metrics_history table...");
+      db.exec(`
+        CREATE TABLE metrics_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          metric_id TEXT UNIQUE NOT NULL,
+          metric_name TEXT NOT NULL,
+          value REAL NOT NULL,
+          tags TEXT,
+          recorded_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_metrics_history_name ON metrics_history(metric_name)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_metrics_history_recorded ON metrics_history(recorded_at)");
+      console.log("Metrics history table created.");
+    }
+
+    // Lock Conflicts table (for tracking lock contentions)
+    const conflictsExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='lock_conflicts'"
+    ).get();
+
+    if (!conflictsExists) {
+      console.log("Migrating: Creating lock_conflicts table...");
+      db.exec(`
+        CREATE TABLE lock_conflicts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          conflict_id TEXT UNIQUE NOT NULL,
+          lock_id TEXT NOT NULL,
+          file_path TEXT NOT NULL,
+          requesting_agent_id TEXT NOT NULL,
+          holding_agent_id TEXT NOT NULL,
+          detected_at TEXT DEFAULT (datetime('now')),
+          resolved_at TEXT,
+          resolution TEXT,
+          FOREIGN KEY (lock_id) REFERENCES file_locks(lock_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_lock_conflicts_detected ON lock_conflicts(detected_at)");
+      console.log("Lock conflicts table created.");
+    }
+
+    // Extend alerts table with additional columns if needed
+    const alertsInfo = db.query("PRAGMA table_info(alerts)").all() as Array<{ name: string }>;
+    const alertColumns = alertsInfo.map((col) => col.name);
+
+    if (!alertColumns.includes("title")) {
+      console.log("Migrating: Adding title column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN title TEXT");
+    }
+
+    if (!alertColumns.includes("message")) {
+      console.log("Migrating: Adding message column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN message TEXT");
+    }
+
+    if (!alertColumns.includes("project_id")) {
+      console.log("Migrating: Adding project_id column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN project_id TEXT");
+    }
+
+    if (!alertColumns.includes("agent_id")) {
+      console.log("Migrating: Adding agent_id column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN agent_id TEXT");
+    }
+
+    if (!alertColumns.includes("task_id")) {
+      console.log("Migrating: Adding task_id column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN task_id TEXT");
+    }
+
+    if (!alertColumns.includes("metadata")) {
+      console.log("Migrating: Adding metadata column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN metadata TEXT");
+    }
+
+    if (!alertColumns.includes("read")) {
+      console.log("Migrating: Adding read column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN read INTEGER DEFAULT 0");
+    }
+
+    if (!alertColumns.includes("acknowledged")) {
+      console.log("Migrating: Adding acknowledged column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN acknowledged INTEGER DEFAULT 0");
+    }
+
+    if (!alertColumns.includes("acknowledged_by")) {
+      console.log("Migrating: Adding acknowledged_by column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN acknowledged_by TEXT");
+    }
+
+    if (!alertColumns.includes("acknowledged_at")) {
+      console.log("Migrating: Adding acknowledged_at column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN acknowledged_at TEXT");
+    }
+
+    if (!alertColumns.includes("resolved")) {
+      console.log("Migrating: Adding resolved column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN resolved INTEGER DEFAULT 0");
+    }
+
+    if (!alertColumns.includes("resolved_at")) {
+      console.log("Migrating: Adding resolved_at column to alerts table...");
+      db.exec("ALTER TABLE alerts ADD COLUMN resolved_at TEXT");
+    }
+
+  } catch (error) {
+    console.error("Monitoring migration error:", error);
+  }
+}
+
+migrateMonitoringTables();
+
 export function getDb() {
   return db;
 }
