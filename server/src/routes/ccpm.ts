@@ -463,6 +463,104 @@ app.patch("/wbs/:id", async (c) => {
   });
 });
 
+// PATCH /api/ccpm/wbs/:id/schedule - Update WBS schedule (for drag & drop)
+app.patch("/wbs/:id/schedule", async (c) => {
+  const wbsId = c.req.param("id");
+  const body = await c.req.json();
+  const { planned_start, planned_end } = body;
+  const now = new Date().toISOString();
+
+  const item = db.query("SELECT * FROM wbs_items WHERE wbs_id = ?").get(wbsId) as WBSItem | null;
+  if (!item) {
+    return c.json({ error: "WBS item not found" }, 404);
+  }
+
+  if (!planned_start || !planned_end) {
+    return c.json({ error: "planned_start and planned_end are required" }, 400);
+  }
+
+  // Validate dates
+  const startDate = new Date(planned_start);
+  const endDate = new Date(planned_end);
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    return c.json({ error: "Invalid date format" }, 400);
+  }
+  if (endDate <= startDate) {
+    return c.json({ error: "End date must be after start date" }, 400);
+  }
+
+  // Calculate new duration in hours
+  const durationDays = (endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000);
+  const durationHours = Math.round(durationDays * 8); // 8 hours per day
+
+  // Check for conflicts with dependencies
+  const conflicts: Array<{ wbs_id: string; code: string; title: string; conflict_type: string }> = [];
+
+  // Check predecessors (this item should start after predecessors end)
+  const predecessors = db.query(`
+    SELECT w.wbs_id, w.code, w.title, w.planned_end, d.type, d.lag
+    FROM wbs_dependencies d
+    JOIN wbs_items w ON d.predecessor_id = w.wbs_id
+    WHERE d.successor_id = ?
+  `).all(wbsId) as Array<{ wbs_id: string; code: string; title: string; planned_end: string | null; type: string; lag: number }>;
+
+  for (const pred of predecessors) {
+    if (pred.planned_end) {
+      const predEnd = new Date(pred.planned_end);
+      const requiredStart = new Date(predEnd.getTime() + (pred.lag || 0) * 24 * 60 * 60 * 1000);
+      if (startDate < requiredStart) {
+        conflicts.push({
+          wbs_id: pred.wbs_id,
+          code: pred.code,
+          title: pred.title,
+          conflict_type: "predecessor_overlap",
+        });
+      }
+    }
+  }
+
+  // Check successors (this item should end before successors start)
+  const successors = db.query(`
+    SELECT w.wbs_id, w.code, w.title, w.planned_start, d.type, d.lag
+    FROM wbs_dependencies d
+    JOIN wbs_items w ON d.successor_id = w.wbs_id
+    WHERE d.predecessor_id = ?
+  `).all(wbsId) as Array<{ wbs_id: string; code: string; title: string; planned_start: string | null; type: string; lag: number }>;
+
+  for (const succ of successors) {
+    if (succ.planned_start) {
+      const succStart = new Date(succ.planned_start);
+      const requiredEnd = new Date(succStart.getTime() - (succ.lag || 0) * 24 * 60 * 60 * 1000);
+      if (endDate > requiredEnd) {
+        conflicts.push({
+          wbs_id: succ.wbs_id,
+          code: succ.code,
+          title: succ.title,
+          conflict_type: "successor_overlap",
+        });
+      }
+    }
+  }
+
+  // Update the schedule regardless of conflicts (user decided to move)
+  db.query(`
+    UPDATE wbs_items
+    SET planned_start = ?, planned_end = ?, estimated_duration = ?, updated_at = ?
+    WHERE wbs_id = ?
+  `).run(planned_start, planned_end, durationHours, now, wbsId);
+
+  const updated = db.query("SELECT * FROM wbs_items WHERE wbs_id = ?").get(wbsId) as WBSItem;
+
+  return c.json({
+    success: true,
+    item: {
+      ...updated,
+      metadata: updated.metadata ? JSON.parse(updated.metadata) : null,
+    },
+    conflicts,
+  });
+});
+
 // DELETE /api/ccpm/wbs/:id - Delete WBS item
 app.delete("/wbs/:id", async (c) => {
   const wbsId = c.req.param("id");

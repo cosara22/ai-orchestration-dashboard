@@ -23,12 +23,13 @@ import { useToast } from "./Toast";
 import { GanttChart } from "./GanttChart";
 import { DocParserModal } from "./DocParserModal";
 import { MilestoneRecorder } from "./MilestoneRecorder";
+import { MilestoneDashboard } from "./MilestoneDashboard";
 
 interface CCPMPanelProps {
   onSelectProject?: (project: CCPMProject | null) => void;
 }
 
-type ViewMode = "tree" | "gantt";
+type ViewMode = "tree" | "gantt" | "milestones";
 
 export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
   const [projects, setProjects] = useState<CCPMProject[]>([]);
@@ -49,7 +50,7 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("tree");
   const [showDocParser, setShowDocParser] = useState(false);
   const [showMilestones, setShowMilestones] = useState(false);
-  const { showToast } = useToast();
+  const toast = useToast();
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -128,12 +129,12 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
     setLoading(true);
     try {
       await api.createCCPMProject({ name: newProjectName.trim() });
-      showToast("Project created successfully", "success");
+      toast.success("Project created successfully");
       setNewProjectName("");
       setShowCreateForm(false);
       fetchProjects();
     } catch (error) {
-      showToast("Failed to create project", "error");
+      toast.error("Failed to create project");
     } finally {
       setLoading(false);
     }
@@ -376,6 +377,17 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
                 <GanttIcon className="w-3 h-3" />
                 Gantt
               </button>
+              <button
+                onClick={() => setViewMode("milestones")}
+                className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${
+                  viewMode === "milestones"
+                    ? "bg-purple-500/20 text-purple-400"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                }`}
+              >
+                <Flag className="w-3 h-3" />
+                Dashboard
+              </button>
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -389,17 +401,19 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
               <button
                 onClick={() => setShowMilestones(true)}
                 className="flex items-center gap-1 px-2 py-1 text-xs rounded text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
-                title="マイルストーン管理"
+                title="マイルストーン記録"
               >
-                <Flag className="w-3 h-3" />
-                MS
+                <Plus className="w-3 h-3" />
+                Record
               </button>
             </div>
           </div>
 
           {/* WBS View */}
           <div className="flex-1 overflow-auto p-2">
-            {wbsItems.length === 0 ? (
+            {viewMode === "milestones" ? (
+              <MilestoneDashboard projectId={selectedProject.project_id} />
+            ) : wbsItems.length === 0 ? (
               <div className="text-center py-8 text-[var(--text-secondary)] text-sm">
                 No WBS items yet. They will be created automatically from Claude Code sessions.
               </div>
@@ -411,7 +425,26 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
                 dependencies={dependencies}
                 criticalChain={criticalChain}
                 onItemClick={(item) => {
-                  showToast(`Selected: ${item.code} ${item.title}`, "info");
+                  toast.info(`Selected: ${item.code} ${item.title}`);
+                }}
+                onScheduleChange={async (itemId, start, end) => {
+                  try {
+                    const result = await api.updateWBSSchedule(
+                      itemId,
+                      start.toISOString(),
+                      end.toISOString()
+                    );
+                    if (result.conflicts && result.conflicts.length > 0) {
+                      toast.warning(
+                        `Schedule updated with ${result.conflicts.length} conflict(s)`
+                      );
+                    } else {
+                      toast.success("Schedule updated");
+                    }
+                    fetchWBS(selectedProject.project_id);
+                  } catch (error) {
+                    toast.error("Failed to update schedule");
+                  }
                 }}
               />
             )}
@@ -424,7 +457,7 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
             projectId={selectedProject.project_id}
             onWbsItemsAdded={() => {
               fetchWBS(selectedProject.project_id);
-              showToast("WBS items added from document", "success");
+              toast.success("WBS items added from document");
             }}
           />
 
@@ -434,7 +467,7 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
             onClose={() => setShowMilestones(false)}
             projectId={selectedProject.project_id}
             onMilestoneCreated={() => {
-              showToast("Milestone updated", "success");
+              toast.success("Milestone updated");
             }}
           />
         </>

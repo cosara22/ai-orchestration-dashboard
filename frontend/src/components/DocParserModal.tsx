@@ -114,7 +114,7 @@ export function DocParserModal({ isOpen, onClose, projectId, onWbsItemsAdded }: 
   const selectAllSuggestions = useCallback(() => {
     const allIds = new Set<string>();
     files.forEach((f) => {
-      f.result?.suggestions?.forEach((s) => {
+      f.result?.suggested_wbs?.forEach((s) => {
         allIds.add(`${f.path}-${s.title}`);
       });
     });
@@ -133,7 +133,7 @@ export function DocParserModal({ isOpen, onClose, projectId, onWbsItemsAdded }: 
       // Collect selected suggestions
       const suggestionsToApply: WBSSuggestion[] = [];
       files.forEach((f) => {
-        f.result?.suggestions?.forEach((s) => {
+        f.result?.suggested_wbs?.forEach((s) => {
           if (selectedSuggestions.has(`${f.path}-${s.title}`)) {
             suggestionsToApply.push(s);
           }
@@ -141,9 +141,9 @@ export function DocParserModal({ isOpen, onClose, projectId, onWbsItemsAdded }: 
       });
 
       // Apply via API
-      const docId = files.find((f) => f.result?.document?.id)?.result?.document?.id;
+      const docId = files.find((f) => f.result?.doc_id)?.result?.doc_id;
       if (docId) {
-        await api.applyWbsSuggestions(docId, suggestionsToApply, projectId);
+        await api.applyWBS(docId, suggestionsToApply.map(s => s.code));
       }
 
       onWbsItemsAdded?.();
@@ -285,9 +285,9 @@ export function DocParserModal({ isOpen, onClose, projectId, onWbsItemsAdded }: 
                     {file.loading && (
                       <span className="text-xs text-blue-600 dark:text-blue-400">解析中...</span>
                     )}
-                    {file.result?.document?.doc_type && (
-                      <span className={`text-xs px-2 py-0.5 rounded ${getDocTypeColor(file.result.document.doc_type)}`}>
-                        {getDocTypeLabel(file.result.document.doc_type)}
+                    {file.result?.doc_type && (
+                      <span className={`text-xs px-2 py-0.5 rounded ${getDocTypeColor(file.result.doc_type)}`}>
+                        {getDocTypeLabel(file.result.doc_type)}
                       </span>
                     )}
                   </div>
@@ -300,13 +300,13 @@ export function DocParserModal({ isOpen, onClose, projectId, onWbsItemsAdded }: 
                   )}
 
                   {/* Suggestions */}
-                  {file.result?.suggestions && file.result.suggestions.length > 0 && (
+                  {file.result?.suggested_wbs && file.result.suggested_wbs.length > 0 && (
                     <div className="p-4">
                       <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                        {file.result.suggestions.length}件のWBS項目を検出
+                        {file.result.suggested_wbs.length}件のWBS項目を検出
                       </div>
                       <div className="space-y-2">
-                        {file.result.suggestions.map((suggestion, sIdx) => {
+                        {file.result.suggested_wbs.map((suggestion, sIdx) => {
                           const id = `${file.path}-${suggestion.title}`;
                           const isSelected = selectedSuggestions.has(id);
                           return (
@@ -330,7 +330,7 @@ export function DocParserModal({ isOpen, onClose, projectId, onWbsItemsAdded }: 
                                     {suggestion.title}
                                   </span>
                                   <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
-                                    {suggestion.item_type}
+                                    {suggestion.type}
                                   </span>
                                 </div>
                                 {suggestion.description && (
@@ -339,10 +339,12 @@ export function DocParserModal({ isOpen, onClose, projectId, onWbsItemsAdded }: 
                                   </p>
                                 )}
                                 <div className="flex items-center gap-4 mt-1 text-xs text-gray-500 dark:text-gray-500">
-                                  {suggestion.estimated_hours && (
-                                    <span>見積: {suggestion.estimated_hours}h</span>
+                                  {suggestion.estimated_duration && (
+                                    <span>見積: {suggestion.estimated_duration}h</span>
                                   )}
-                                  <span>信頼度: {Math.round(suggestion.confidence * 100)}%</span>
+                                  {suggestion.source_section && (
+                                    <span>セクション: {suggestion.source_section}</span>
+                                  )}
                                 </div>
                               </div>
                             </label>
@@ -353,7 +355,7 @@ export function DocParserModal({ isOpen, onClose, projectId, onWbsItemsAdded }: 
                   )}
 
                   {/* No Suggestions */}
-                  {file.result && (!file.result.suggestions || file.result.suggestions.length === 0) && (
+                  {file.result && (!file.result.suggested_wbs || file.result.suggested_wbs.length === 0) && (
                     <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                       WBS項目が検出されませんでした
                     </div>

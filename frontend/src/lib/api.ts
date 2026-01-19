@@ -465,6 +465,15 @@ export const api = {
       body: JSON.stringify(updates),
     }),
 
+  updateWBSSchedule: (id: string, planned_start: string, planned_end: string) =>
+    fetchApi<{ success: boolean; item: WBSItem; conflicts: Array<{ wbs_id: string; code: string; title: string; conflict_type: string }> }>(
+      `/api/ccpm/wbs/${id}/schedule`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ planned_start, planned_end }),
+      }
+    ),
+
   deleteWBSItem: (id: string) =>
     fetchApi<{ success: boolean }>(`/api/ccpm/wbs/${id}`, {
       method: "DELETE",

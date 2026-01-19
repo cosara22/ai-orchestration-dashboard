@@ -98,11 +98,9 @@ export function MilestoneRecorder({ projectId, isOpen, onClose, onMilestoneCreat
     if (!selectedMilestone) return;
 
     try {
-      await api.achieveMilestone(selectedMilestone.id, {
+      await api.achieveMilestone(selectedMilestone.milestone_id, {
         evidence: {
-          type: achieveForm.evidence_type,
-          content: achieveForm.evidence_content,
-          timestamp: new Date().toISOString(),
+          commits: achieveForm.evidence_content ? [achieveForm.evidence_content] : [],
         },
         lessons_learned: achieveForm.lessons_learned,
         next_actions: achieveForm.next_actions,
@@ -130,20 +128,18 @@ export function MilestoneRecorder({ projectId, isOpen, onClose, onMilestoneCreat
       next_actions: [
         ...prev.next_actions,
         {
-          id: `action-${Date.now()}`,
-          title: newAction.title,
+          action: newAction.title,
           priority: newAction.priority,
-          status: "pending" as const,
         },
       ],
     }));
     setNewAction({ title: "", priority: "medium" });
   };
 
-  const removeNextAction = (id: string) => {
+  const removeNextAction = (index: number) => {
     setAchieveForm((prev) => ({
       ...prev,
-      next_actions: prev.next_actions.filter((a) => a.id !== id),
+      next_actions: prev.next_actions.filter((_, i) => i !== index),
     }));
   };
 
@@ -256,7 +252,7 @@ export function MilestoneRecorder({ projectId, isOpen, onClose, onMilestoneCreat
                   ) : (
                     milestones.map((milestone) => (
                       <div
-                        key={milestone.id}
+                        key={milestone.milestone_id}
                         className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
                       >
                         <div className="flex items-start justify-between">
@@ -266,10 +262,10 @@ export function MilestoneRecorder({ projectId, isOpen, onClose, onMilestoneCreat
                                 {milestone.title}
                               </h3>
                               <span className={`text-xs px-2 py-0.5 rounded ${getStatusColor(milestone.status)}`}>
-                                {milestone.status === "achieved" ? "達成" : milestone.status === "in_progress" ? "進行中" : milestone.status === "missed" ? "未達" : "予定"}
+                                {milestone.status === "achieved" ? "達成" : milestone.status === "missed" ? "未達" : milestone.status === "deferred" ? "延期" : "予定"}
                               </span>
-                              <span className={`text-xs ${getPriorityColor(milestone.priority)}`}>
-                                ● {milestone.priority === "high" ? "高" : milestone.priority === "medium" ? "中" : "低"}
+                              <span className={`text-xs text-gray-500`}>
+                                {milestone.type}
                               </span>
                             </div>
                             {milestone.description && (
@@ -281,8 +277,8 @@ export function MilestoneRecorder({ projectId, isOpen, onClose, onMilestoneCreat
                               {milestone.target_date && (
                                 <span>目標: {new Date(milestone.target_date).toLocaleDateString("ja-JP")}</span>
                               )}
-                              {milestone.achieved_at && (
-                                <span>達成: {new Date(milestone.achieved_at).toLocaleDateString("ja-JP")}</span>
+                              {milestone.achieved_date && (
+                                <span>達成: {new Date(milestone.achieved_date).toLocaleDateString("ja-JP")}</span>
                               )}
                             </div>
                           </div>
@@ -300,11 +296,16 @@ export function MilestoneRecorder({ projectId, isOpen, onClose, onMilestoneCreat
                         </div>
 
                         {/* Evidence & Next Actions */}
-                        {milestone.evidence && (
+                        {milestone.evidence && (milestone.evidence.commits?.length || milestone.evidence.files_changed?.length) && (
                           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">エビデンス:</div>
-                            <div className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-2 rounded">
-                              {milestone.evidence.content}
+                            <div className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-2 rounded space-y-1">
+                              {milestone.evidence.commits?.map((c, i) => (
+                                <div key={i}>Commit: {c}</div>
+                              ))}
+                              {milestone.evidence.files_changed?.slice(0, 3).map((f, i) => (
+                                <div key={i}>File: {f}</div>
+                              ))}
                             </div>
                           </div>
                         )}
@@ -313,10 +314,10 @@ export function MilestoneRecorder({ projectId, isOpen, onClose, onMilestoneCreat
                           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">ネクストアクション:</div>
                             <ul className="space-y-1">
-                              {milestone.next_actions.map((action) => (
-                                <li key={action.id} className="flex items-center gap-2 text-sm">
+                              {milestone.next_actions.map((action, idx) => (
+                                <li key={idx} className="flex items-center gap-2 text-sm">
                                   <span className={`w-2 h-2 rounded-full ${getPriorityColor(action.priority)} bg-current`} />
-                                  <span className="text-gray-700 dark:text-gray-300">{action.title}</span>
+                                  <span className="text-gray-700 dark:text-gray-300">{action.action}</span>
                                 </li>
                               ))}
                             </ul>
@@ -341,7 +342,7 @@ export function MilestoneRecorder({ projectId, isOpen, onClose, onMilestoneCreat
                   ) : (
                     semanticRecords.map((record) => (
                       <div
-                        key={record.id}
+                        key={record.record_id}
                         className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
                       >
                         <div className="flex items-start justify-between">
@@ -541,14 +542,14 @@ export function MilestoneRecorder({ projectId, isOpen, onClose, onMilestoneCreat
                 </div>
                 {achieveForm.next_actions.length > 0 && (
                   <ul className="space-y-1">
-                    {achieveForm.next_actions.map((action) => (
-                      <li key={action.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 px-3 py-2 rounded">
+                    {achieveForm.next_actions.map((action, index) => (
+                      <li key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 px-3 py-2 rounded">
                         <div className="flex items-center gap-2">
                           <span className={`w-2 h-2 rounded-full ${getPriorityColor(action.priority)} bg-current`} />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{action.title}</span>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{action.action}</span>
                         </div>
                         <button
-                          onClick={() => removeNextAction(action.id)}
+                          onClick={() => removeNextAction(index)}
                           className="text-red-500 hover:text-red-700 text-sm"
                         >
                           削除

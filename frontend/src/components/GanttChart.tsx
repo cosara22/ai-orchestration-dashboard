@@ -4,12 +4,10 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { WBSItem, WBSDependency } from "@/lib/api";
 import {
   Calendar,
-  ZoomIn,
-  ZoomOut,
   ChevronLeft,
   ChevronRight,
-  Maximize2,
 } from "lucide-react";
+import { useTheme } from "./ThemeProvider";
 
 interface GanttChartProps {
   items: WBSItem[];
@@ -17,6 +15,14 @@ interface GanttChartProps {
   criticalChain: string[];
   onItemClick?: (item: WBSItem) => void;
   onScheduleChange?: (itemId: string, start: Date, end: Date) => void;
+}
+
+interface DragState {
+  itemId: string;
+  type: "move" | "resize-start" | "resize-end";
+  startX: number;
+  originalStart: Date;
+  originalEnd: Date;
 }
 
 interface GanttItem {
@@ -51,11 +57,33 @@ export function GanttChart({
   onItemClick,
   onScheduleChange,
 }: GanttChartProps) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
+  // Theme-aware colors
+  const colors = useMemo(() => ({
+    background: isDark ? "#0f172a" : "#ffffff",
+    headerBg: isDark ? "#1e293b" : "#f1f5f9",
+    labelBg: isDark ? "#111827" : "#f8fafc",
+    weekendBg: isDark ? "#374151" : "#e2e8f0",
+    gridLine: isDark ? "#374151" : "#cbd5e1",
+    textPrimary: isDark ? "#f3f4f6" : "#1e293b",
+    textSecondary: isDark ? "#9ca3af" : "#64748b",
+    hoverBg: isDark ? "#374151" : "#e2e8f0",
+    tooltipBg: isDark ? "#1f2937" : "#ffffff",
+    tooltipBorder: isDark ? "#374151" : "#e2e8f0",
+    selectBg: isDark ? "bg-gray-800" : "bg-white",
+    selectBorder: isDark ? "border-gray-600" : "border-gray-300",
+    selectText: isDark ? "text-gray-100" : "text-gray-900",
+  }), [isDark]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [scrollOffset, setScrollOffset] = useState(0);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ start: Date; end: Date } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Convert WBS items to Gantt format
@@ -175,9 +203,120 @@ export function GanttChart({
     [minDate, dayWidth, scrollOffset]
   );
 
+  const xToDate = useCallback(
+    (x: number) => {
+      const days = (x - labelWidth + scrollOffset) / dayWidth;
+      return new Date(minDate.getTime() + days * 24 * 60 * 60 * 1000);
+    },
+    [minDate, dayWidth, scrollOffset]
+  );
+
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("ja-JP", { month: "short", day: "numeric" });
   };
+
+  // Drag & Drop handlers
+  const handleDragStart = useCallback(
+    (e: React.MouseEvent, item: GanttItem, type: DragState["type"]) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragState({
+        itemId: item.id,
+        type,
+        startX: e.clientX,
+        originalStart: item.start,
+        originalEnd: item.end,
+      });
+      setDragPreview({ start: item.start, end: item.end });
+    },
+    []
+  );
+
+  const handleDragMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!dragState) return;
+
+      const deltaX = e.clientX - dragState.startX;
+      const deltaDays = deltaX / dayWidth;
+      const deltaMs = deltaDays * 24 * 60 * 60 * 1000;
+
+      let newStart = dragState.originalStart;
+      let newEnd = dragState.originalEnd;
+
+      if (dragState.type === "move") {
+        newStart = new Date(dragState.originalStart.getTime() + deltaMs);
+        newEnd = new Date(dragState.originalEnd.getTime() + deltaMs);
+      } else if (dragState.type === "resize-start") {
+        newStart = new Date(dragState.originalStart.getTime() + deltaMs);
+        if (newStart >= newEnd) {
+          newStart = new Date(newEnd.getTime() - 24 * 60 * 60 * 1000);
+        }
+      } else if (dragState.type === "resize-end") {
+        newEnd = new Date(dragState.originalEnd.getTime() + deltaMs);
+        if (newEnd <= newStart) {
+          newEnd = new Date(newStart.getTime() + 24 * 60 * 60 * 1000);
+        }
+      }
+
+      setDragPreview({ start: newStart, end: newEnd });
+    },
+    [dragState, dayWidth]
+  );
+
+  const handleDragEnd = useCallback(() => {
+    if (dragState && dragPreview && onScheduleChange) {
+      onScheduleChange(dragState.itemId, dragPreview.start, dragPreview.end);
+    }
+    setDragState(null);
+    setDragPreview(null);
+  }, [dragState, dragPreview, onScheduleChange]);
+
+  // Add global mouse event listeners for drag
+  useEffect(() => {
+    if (!dragState) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - dragState.startX;
+      const deltaDays = deltaX / dayWidth;
+      const deltaMs = deltaDays * 24 * 60 * 60 * 1000;
+
+      let newStart = dragState.originalStart;
+      let newEnd = dragState.originalEnd;
+
+      if (dragState.type === "move") {
+        newStart = new Date(dragState.originalStart.getTime() + deltaMs);
+        newEnd = new Date(dragState.originalEnd.getTime() + deltaMs);
+      } else if (dragState.type === "resize-start") {
+        newStart = new Date(dragState.originalStart.getTime() + deltaMs);
+        if (newStart >= newEnd) {
+          newStart = new Date(newEnd.getTime() - 24 * 60 * 60 * 1000);
+        }
+      } else if (dragState.type === "resize-end") {
+        newEnd = new Date(dragState.originalEnd.getTime() + deltaMs);
+        if (newEnd <= newStart) {
+          newEnd = new Date(newStart.getTime() + 24 * 60 * 60 * 1000);
+        }
+      }
+
+      setDragPreview({ start: newStart, end: newEnd });
+    };
+
+    const handleMouseUp = () => {
+      if (dragState && dragPreview && onScheduleChange) {
+        onScheduleChange(dragState.itemId, dragPreview.start, dragPreview.end);
+      }
+      setDragState(null);
+      setDragPreview(null);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [dragState, dayWidth, onScheduleChange, dragPreview]);
 
   // Generate date headers
   const dateHeaders = useMemo(() => {
@@ -291,11 +430,11 @@ export function GanttChart({
           <select
             value={viewMode}
             onChange={(e) => setViewMode(e.target.value as ViewMode)}
-            className="px-2 py-1 text-xs rounded border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)]"
+            className={`px-2 py-1 text-xs rounded border ${colors.selectBorder} ${colors.selectBg} ${colors.selectText}`}
           >
-            <option value="day">Day</option>
-            <option value="week">Week</option>
-            <option value="month">Month</option>
+            <option value="day" className={`${colors.selectBg} ${colors.selectText}`}>Day</option>
+            <option value="week" className={`${colors.selectBg} ${colors.selectText}`}>Week</option>
+            <option value="month" className={`${colors.selectBg} ${colors.selectText}`}>Month</option>
           </select>
         </div>
       </div>
@@ -318,7 +457,7 @@ export function GanttChart({
             y={0}
             width={labelWidth + chartWidth}
             height={chartHeight}
-            fill="var(--bg-primary)"
+            fill={colors.background}
           />
 
           {/* Date header background */}
@@ -327,7 +466,7 @@ export function GanttChart({
             y={0}
             width={chartWidth}
             height={headerHeight}
-            fill="var(--bg-secondary)"
+            fill={colors.headerBg}
           />
 
           {/* Weekend backgrounds */}
@@ -342,7 +481,7 @@ export function GanttChart({
                 y={headerHeight}
                 width={dayWidth}
                 height={chartHeight - headerHeight}
-                fill="var(--bg-tertiary)"
+                fill={colors.weekendBg}
                 opacity={0.3}
               />
             );
@@ -360,7 +499,7 @@ export function GanttChart({
                   y1={headerHeight}
                   x2={x}
                   y2={chartHeight}
-                  stroke="var(--border-primary)"
+                  stroke={colors.gridLine}
                   strokeWidth={0.5}
                 />
               );
@@ -376,7 +515,7 @@ export function GanttChart({
               y1={headerHeight + (i + 1) * rowHeight}
               x2={labelWidth + chartWidth}
               y2={headerHeight + (i + 1) * rowHeight}
-              stroke="var(--border-primary)"
+              stroke={colors.gridLine}
               strokeWidth={0.5}
             />
           ))}
@@ -393,7 +532,7 @@ export function GanttChart({
                 y={headerHeight - 10}
                 textAnchor="middle"
                 fontSize={10}
-                fill="var(--text-secondary)"
+                fill={colors.textSecondary}
               >
                 {header.label}
               </text>
@@ -425,14 +564,14 @@ export function GanttChart({
             y={0}
             width={labelWidth}
             height={chartHeight}
-            fill="var(--bg-secondary)"
+            fill={colors.labelBg}
           />
           <line
             x1={labelWidth}
             y1={0}
             x2={labelWidth}
             y2={chartHeight}
-            stroke="var(--border-primary)"
+            stroke={colors.gridLine}
             strokeWidth={1}
           />
 
@@ -450,7 +589,7 @@ export function GanttChart({
                     y={headerHeight + i * rowHeight}
                     width={labelWidth + chartWidth}
                     height={rowHeight}
-                    fill="var(--bg-tertiary)"
+                    fill={colors.hoverBg}
                     opacity={0.5}
                   />
                 )}
@@ -472,7 +611,7 @@ export function GanttChart({
                       x={10 + item.level * 12}
                       y={headerHeight + i * rowHeight + rowHeight / 2 + 4}
                       fontSize={10}
-                      fill="var(--text-secondary)"
+                      fill={colors.textSecondary}
                     >
                       {isExpanded ? "▼" : "▶"}
                     </text>
@@ -484,7 +623,7 @@ export function GanttChart({
                   x={20 + item.level * 12 + (hasChildren ? 12 : 0)}
                   y={headerHeight + i * rowHeight + rowHeight / 2 + 4}
                   fontSize={11}
-                  fill={item.isCritical ? CRITICAL_COLOR : "var(--text-primary)"}
+                  fill={item.isCritical ? CRITICAL_COLOR : colors.textPrimary}
                   fontWeight={item.isCritical ? "bold" : "normal"}
                   style={{ cursor: "pointer" }}
                   onClick={() => onItemClick?.(items.find((it) => it.wbs_id === item.id)!)}
@@ -502,10 +641,14 @@ export function GanttChart({
 
           {/* Bars */}
           {visibleItems.map((item, i) => {
-            const x = dateToX(item.start);
+            const isDragging = dragState?.itemId === item.id;
+            const displayStart = isDragging && dragPreview ? dragPreview.start : item.start;
+            const displayEnd = isDragging && dragPreview ? dragPreview.end : item.end;
+
+            const x = dateToX(displayStart);
             const width = Math.max(
               8,
-              ((item.end.getTime() - item.start.getTime()) / (24 * 60 * 60 * 1000)) * dayWidth
+              ((displayEnd.getTime() - displayStart.getTime()) / (24 * 60 * 60 * 1000)) * dayWidth
             );
             const y = headerHeight + i * rowHeight + 8;
             const height = rowHeight - 16;
@@ -513,14 +656,14 @@ export function GanttChart({
             if (x + width < labelWidth || x > labelWidth + 800) return null;
 
             const barColor = item.isCritical ? CRITICAL_COLOR : STATUS_COLORS[item.status] || "#6b7280";
+            const isHovered = hoveredItem === item.id;
+            const handleWidth = 6;
 
             return (
               <g
                 key={item.id}
-                onMouseEnter={() => setHoveredItem(item.id)}
-                onMouseLeave={() => setHoveredItem(null)}
-                onClick={() => onItemClick?.(items.find((it) => it.wbs_id === item.id)!)}
-                style={{ cursor: "pointer" }}
+                onMouseEnter={() => !dragState && setHoveredItem(item.id)}
+                onMouseLeave={() => !dragState && setHoveredItem(null)}
               >
                 {/* Bar background */}
                 <rect
@@ -530,7 +673,7 @@ export function GanttChart({
                   height={height}
                   rx={4}
                   fill={barColor}
-                  opacity={0.3}
+                  opacity={isDragging ? 0.6 : 0.7}
                 />
 
                 {/* Progress fill */}
@@ -541,8 +684,50 @@ export function GanttChart({
                   height={height}
                   rx={4}
                   fill={barColor}
-                  opacity={0.8}
+                  opacity={1}
                 />
+
+                {/* Main bar (draggable area for move) */}
+                <rect
+                  x={Math.max(labelWidth, x) + handleWidth}
+                  y={y}
+                  width={Math.max(0, Math.min(width - handleWidth * 2, x + width - labelWidth - handleWidth * 2))}
+                  height={height}
+                  fill="transparent"
+                  style={{ cursor: onScheduleChange ? "move" : "pointer" }}
+                  onMouseDown={(e) => onScheduleChange && handleDragStart(e, item, "move")}
+                  onClick={() => !dragState && onItemClick?.(items.find((it) => it.wbs_id === item.id)!)}
+                />
+
+                {/* Left resize handle */}
+                {onScheduleChange && x >= labelWidth && (
+                  <rect
+                    x={Math.max(labelWidth, x)}
+                    y={y}
+                    width={handleWidth}
+                    height={height}
+                    fill={isHovered || isDragging ? barColor : "transparent"}
+                    opacity={0.6}
+                    rx={4}
+                    style={{ cursor: "ew-resize" }}
+                    onMouseDown={(e) => handleDragStart(e, item, "resize-start")}
+                  />
+                )}
+
+                {/* Right resize handle */}
+                {onScheduleChange && (
+                  <rect
+                    x={Math.max(labelWidth, x + width - handleWidth)}
+                    y={y}
+                    width={handleWidth}
+                    height={height}
+                    fill={isHovered || isDragging ? barColor : "transparent"}
+                    opacity={0.6}
+                    rx={4}
+                    style={{ cursor: "ew-resize" }}
+                    onMouseDown={(e) => handleDragStart(e, item, "resize-end")}
+                  />
+                )}
 
                 {/* Border for critical items */}
                 {item.isCritical && (
@@ -555,11 +740,36 @@ export function GanttChart({
                     fill="none"
                     stroke={CRITICAL_COLOR}
                     strokeWidth={2}
+                    pointerEvents="none"
                   />
                 )}
 
+                {/* Drag indicator lines on hover */}
+                {(isHovered || isDragging) && onScheduleChange && (
+                  <>
+                    <line
+                      x1={Math.max(labelWidth, x) + 2}
+                      y1={y + height / 2 - 3}
+                      x2={Math.max(labelWidth, x) + 2}
+                      y2={y + height / 2 + 3}
+                      stroke="white"
+                      strokeWidth={1}
+                      pointerEvents="none"
+                    />
+                    <line
+                      x1={Math.max(labelWidth, x + width - 3)}
+                      y1={y + height / 2 - 3}
+                      x2={Math.max(labelWidth, x + width - 3)}
+                      y2={y + height / 2 + 3}
+                      stroke="white"
+                      strokeWidth={1}
+                      pointerEvents="none"
+                    />
+                  </>
+                )}
+
                 {/* Tooltip on hover */}
-                {hoveredItem === item.id && (
+                {(isHovered || isDragging) && (
                   <g>
                     <rect
                       x={x + width / 2 - 60}
@@ -567,17 +777,20 @@ export function GanttChart({
                       width={120}
                       height={24}
                       rx={4}
-                      fill="var(--bg-secondary)"
-                      stroke="var(--border-primary)"
+                      fill={colors.tooltipBg}
+                      stroke={isDragging ? barColor : colors.tooltipBorder}
+                      strokeWidth={isDragging ? 2 : 1}
+                      pointerEvents="none"
                     />
                     <text
                       x={x + width / 2}
                       y={y - 13}
                       textAnchor="middle"
                       fontSize={10}
-                      fill="var(--text-primary)"
+                      fill={colors.textPrimary}
+                      pointerEvents="none"
                     >
-                      {formatDate(item.start)} - {formatDate(item.end)}
+                      {formatDate(displayStart)} - {formatDate(displayEnd)}
                     </text>
                   </g>
                 )}
