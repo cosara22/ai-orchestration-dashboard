@@ -641,31 +641,121 @@ curl http://localhost:4000/api/events?limit=1
 
 ---
 
-## 8. ネクストアクション
+## 8. Phase 12: オプション機能 (完了)
 
-### 8.1 Phase 12: 追加改善候補 (未着手)
+**完了日**: 2026-01-19
 
-| 機能 | 優先度 | 説明 | 工数目安 |
-|------|--------|------|---------|
-| ダッシュボードカスタマイズ | Optional | パネル配置のドラッグ&ドロップ | 4-6h |
-| SQLite FTS5 検索 | Optional | 全文検索性能改善 | 2-3h |
-| テストスイート | Optional | Vitest + Playwright | 4-6h |
-| CI/CD | Optional | GitHub Actions | 2-3h |
+### 8.1 Phase 12-A: Vitest ユニットテスト (完了)
 
-### 8.2 技術的改善候補
+| 項目 | 状態 | 成果物 |
+|------|------|--------|
+| Vitest 設定 | 完了 | `server/vitest.config.ts` |
+| テストセットアップ | 完了 | `server/tests/setup.ts` |
+| API ルートテスト | 完了 | `server/tests/api.test.ts` |
+| Alert Evaluator テスト | 完了 | `server/tests/alertEvaluator.test.ts` |
+
+**テスト結果**: 37 テスト合格（100%）
+
+| テストスイート | テスト数 | 状態 |
+|---------------|----------|------|
+| API Routes | 15 | ✅ 全合格 |
+| Alert Evaluator | 22 | ✅ 全合格 |
+
+**技術詳細**:
+- `better-sqlite3` によるインメモリテストDB
+- 各テスト前にデータクリア
+- v8 カバレッジサポート
+
+### 8.2 Phase 12-B: Playwright E2E テスト (完了)
+
+| 項目 | 状態 | 成果物 |
+|------|------|--------|
+| Playwright 設定 | 完了 | `frontend/playwright.config.ts` |
+| E2E テストスイート | 完了 | `frontend/e2e/dashboard.spec.ts` |
+| tsconfig 更新 | 完了 | `frontend/tsconfig.json` |
+
+**テスト結果**: 6 テスト合格（100%）
+
+| テスト名 | 内容 |
+|----------|------|
+| should display page title | ページタイトル確認 |
+| should show header with dashboard title | H1 ヘッダー確認 |
+| should display status cards | ステータスカード表示確認 |
+| should have settings button | 設定ボタン存在確認 |
+| should open settings modal | モーダル動作確認 |
+| should display footer | フッター表示確認 |
+
+**実行コマンド**:
+```bash
+cd frontend && npx playwright test
+# または既存サーバーに対して
+PLAYWRIGHT_SKIP_SERVER=true PLAYWRIGHT_BASE_URL=http://localhost:3000 npx playwright test
+```
+
+### 8.3 Phase 12-C: GitHub Actions CI/CD (完了)
+
+| 項目 | 状態 | 成果物 |
+|------|------|--------|
+| CI ワークフロー | 完了 | `.github/workflows/ci.yml` |
+
+**ワークフロージョブ**:
+
+| ジョブ名 | 内容 | トリガー |
+|----------|------|---------|
+| `backend-test` | Bun + Vitest ユニットテスト | push/PR to main/master |
+| `frontend-build` | Next.js TypeScript ビルド | push/PR to main/master |
+| `e2e-test` | Playwright E2E テスト | push/PR to main/master |
+| `lint` | ESLint コード品質チェック | push/PR to main/master |
+
+### 8.4 Phase 12-D: ダッシュボードカスタマイザー (完了)
+
+| 項目 | 状態 | 成果物 |
+|------|------|--------|
+| DashboardCustomizer | 完了 | `frontend/src/components/DashboardCustomizer.tsx` |
+| ページ統合 | 完了 | `frontend/src/app/page.tsx` |
+
+**機能詳細**:
+- パネル表示/非表示のトグル
+- ドラッグ＆ドロップによる順序変更
+- localStorage による設定永続化
+- ヘッダーに LayoutGrid ボタン追加
+
+**設定可能パネル**:
+- Events (イベント一覧)
+- Sessions (セッション一覧)
+- Tasks (タスク管理)
+- Agents (エージェント管理)
+- Alerts (アラート管理)
+- Timeline (タイムラインチャート)
+
+---
+
+## 9. ネクストアクション
+
+### 9.1 Phase 13: 将来の拡張候補 (未着手)
+
+| 機能 | 優先度 | 説明 |
+|------|--------|------|
+| SQLite FTS5 検索 | Low | 全文検索性能改善 |
+| 状態管理リファクタ | Low | Zustand/Jotai 導入 |
+| Docker コンテナ化 | Medium | 本番デプロイ対応 |
+| ユーザー管理 | Medium | マルチユーザー対応 |
+| ダッシュボードウィジェット | Low | カスタムウィジェット追加 |
+
+### 9.2 技術的改善候補
 
 | 項目 | 現状 | 改善案 |
 |------|------|--------|
 | 検索性能 | LIKE 検索 | SQLite FTS5 導入 |
 | 状態管理 | useState 分散 | Zustand/Jotai 導入 |
-| テスト | なし | Vitest + Playwright |
-| CI/CD | なし | GitHub Actions |
+| テスト | Vitest + Playwright | カバレッジ目標 80% |
+| デプロイ | 未対応 | Docker + CI/CD |
 
 ---
 
-## 9. 既知の課題・制限事項
+## 10. 既知の課題・制限事項
 
-### 9.1 現在の制限
+### 10.1 現在の制限
 
 | 項目 | 状況 | 対応方針 |
 |------|------|---------|
@@ -675,7 +765,7 @@ curl http://localhost:4000/api/events?limit=1
 | ブラウザ拡張機能 | 注意 | MetaMask 等が干渉する場合あり（シークレットモード推奨） |
 | アラート自動評価 | 実装済み | イベント POST 時に自動評価 |
 
-### 9.2 パフォーマンス考慮事項
+### 10.2 パフォーマンス考慮事項
 
 - SQLite WAL モードで並行読み取り対応
 - WebSocket によるリアルタイム更新（ポーリング不要）
@@ -685,19 +775,143 @@ curl http://localhost:4000/api/events?limit=1
 
 ---
 
-## 10. プロジェクト統計
+## 11. プロジェクト統計
 
 | メトリクス | 値 |
 |-----------|-----|
 | 開発期間 | 2026-01-18 〜 2026-01-19 (2日間) |
-| 完了フェーズ | 11 / 11 (コア機能 + 拡張機能 100%) |
+| 完了フェーズ | 12 / 12 (コア機能 + 拡張機能 + オプション機能 100%) |
 | API エンドポイント | 29 |
-| フロントエンドコンポーネント | 21 (Pagination 追加) |
+| フロントエンドコンポーネント | 22 (DashboardCustomizer 追加) |
 | データベーステーブル | 6 |
-| 主要機能 | リアルタイムモニタリング, タスク管理, エージェント管理, アラート管理, 検索, エクスポート, 認証, ページネーション |
+| バックエンドテスト | 37 (Vitest) |
+| E2E テスト | 6 (Playwright) |
+| CI/CD ジョブ | 4 (GitHub Actions) |
+| 主要機能 | リアルタイムモニタリング, タスク管理, エージェント管理, アラート管理, 検索, エクスポート, 認証, ページネーション, テスト, CI/CD |
 
 ---
 
-**最終更新**: 2026-01-19 (Phase 11 完了 - 拡張機能完成)
-**次回レビュー予定**: Phase 12 追加改善検討時
-**ドキュメントバージョン**: v1.1.0
+## 12. セマンティックタグ
+
+```yaml
+project:
+  id: PRJ-2026-002
+  name: AI Orchestration Dashboard
+  type: Web Application
+  status: Completed
+
+technology:
+  runtime: Bun
+  backend: Hono
+  frontend: Next.js 15
+  database: SQLite (WAL mode)
+  cache: Redis
+  testing:
+    unit: Vitest
+    e2e: Playwright
+  ci_cd: GitHub Actions
+
+features:
+  core:
+    - real_time_monitoring
+    - session_management
+    - event_tracking
+    - task_management
+    - agent_management
+    - alert_management
+  extended:
+    - api_authentication
+    - pagination
+    - alert_auto_evaluation
+  optional:
+    - unit_testing
+    - e2e_testing
+    - ci_cd_pipeline
+    - dashboard_customization
+
+metrics:
+  api_endpoints: 29
+  frontend_components: 22
+  database_tables: 6
+  unit_tests: 37
+  e2e_tests: 6
+  test_pass_rate: 100%
+
+milestones:
+  - phase: 1
+    name: Infrastructure
+    status: completed
+    date: 2026-01-18
+  - phase: 2
+    name: Core P1
+    status: completed
+    date: 2026-01-18
+  - phase: 3
+    name: Core P2
+    status: completed
+    date: 2026-01-19
+  - phase: 4
+    name: UX Enhancement
+    status: completed
+    date: 2026-01-19
+  - phase: 5
+    name: Hooks Integration
+    status: completed
+    date: 2026-01-19
+  - phase: 6
+    name: Settings
+    status: completed
+    date: 2026-01-19
+  - phase: 7
+    name: Theme Toggle
+    status: completed
+    date: 2026-01-19
+  - phase: 8
+    name: Agent Management
+    status: completed
+    date: 2026-01-19
+  - phase: 9
+    name: Log Search
+    status: completed
+    date: 2026-01-19
+  - phase: 10
+    name: Alert Configuration
+    status: completed
+    date: 2026-01-19
+  - phase: 11
+    name: Extended Features
+    status: completed
+    date: 2026-01-19
+  - phase: 12
+    name: Optional Features
+    status: completed
+    date: 2026-01-19
+
+next_actions:
+  - id: NA-001
+    title: SQLite FTS5 全文検索
+    priority: low
+    category: performance
+  - id: NA-002
+    title: 状態管理リファクタ (Zustand)
+    priority: low
+    category: architecture
+  - id: NA-003
+    title: Docker コンテナ化
+    priority: medium
+    category: deployment
+  - id: NA-004
+    title: マルチユーザー対応
+    priority: medium
+    category: feature
+  - id: NA-005
+    title: テストカバレッジ 80%
+    priority: low
+    category: quality
+```
+
+---
+
+**最終更新**: 2026-01-19 (Phase 12 完了 - オプション機能完成)
+**次回レビュー予定**: Phase 13 将来拡張検討時
+**ドキュメントバージョン**: v1.2.0

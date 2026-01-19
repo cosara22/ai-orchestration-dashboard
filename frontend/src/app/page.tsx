@@ -15,7 +15,8 @@ import { AlertPanel } from "@/components/AlertPanel";
 import { ExportButton } from "@/components/ExportButton";
 import { SettingsModal } from "@/components/SettingsModal";
 import { SearchModal } from "@/components/SearchModal";
-import { Activity, RefreshCw, AlertTriangle, X, Settings, Search } from "lucide-react";
+import { DashboardCustomizer, PanelConfig, loadPanelConfig } from "@/components/DashboardCustomizer";
+import { Activity, RefreshCw, AlertTriangle, X, Settings, Search, LayoutGrid } from "lucide-react";
 import { useToast } from "@/components/Toast";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4000/ws";
@@ -33,8 +34,20 @@ export default function DashboardPage() {
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentCounts, setAgentCounts] = useState<AgentCounts>({ active: 0, idle: 0, error: 0, total: 0 });
+  const [panelConfig, setPanelConfig] = useState<PanelConfig[]>([]);
+
+  // Load panel config on mount
+  useEffect(() => {
+    setPanelConfig(loadPanelConfig());
+  }, []);
+
+  const isPanelVisible = useCallback((panelId: string) => {
+    const panel = panelConfig.find((p) => p.id === panelId);
+    return panel ? panel.visible : true;
+  }, [panelConfig]);
 
   const handleWSMessage = useCallback((message: any) => {
     if (message.type === "event") {
@@ -199,6 +212,13 @@ export default function DashboardPage() {
                 <RefreshCw className="h-4 w-4 text-theme-secondary" />
               </button>
               <button
+                onClick={() => setShowCustomizer(true)}
+                className="p-2 rounded-md hover:bg-theme-card transition-colors"
+                title="Customize Layout"
+              >
+                <LayoutGrid className="h-4 w-4 text-theme-secondary" />
+              </button>
+              <button
                 onClick={() => setShowSettings(true)}
                 className="p-2 rounded-md hover:bg-theme-card transition-colors"
                 title="Settings"
@@ -219,93 +239,101 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-6">
             {/* Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <StatusCard
-                title="Active Sessions"
-                value={metrics?.sessions.active || 0}
-                subtitle="currently running"
-                status="success"
-                icon="activity"
-              />
-              <StatusCard
-                title="Active Agents"
-                value={agentCounts.active}
-                subtitle={`${agentCounts.total} registered`}
-                status={agentCounts.active > 0 ? "success" : "info"}
-                icon="activity"
-              />
-              <StatusCard
-                title="Total Events"
-                value={metrics?.events.total || 0}
-                subtitle="all time"
-                status="info"
-                icon="activity"
-              />
-              <StatusCard
-                title="Completed Sessions"
-                value={metrics?.sessions.completed || 0}
-                subtitle="successfully finished"
-                status="info"
-                icon="check"
-              />
-              <StatusCard
-                title="Failed Sessions"
-                value={metrics?.sessions.failed || 0}
-                subtitle="with errors"
-                status={metrics?.sessions.failed ? "error" : "info"}
-                icon="error"
-              />
-            </div>
+            {isPanelVisible("metrics") && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <StatusCard
+                  title="Active Sessions"
+                  value={metrics?.sessions.active || 0}
+                  subtitle="currently running"
+                  status="success"
+                  icon="activity"
+                />
+                <StatusCard
+                  title="Active Agents"
+                  value={agentCounts.active}
+                  subtitle={`${agentCounts.total} registered`}
+                  status={agentCounts.active > 0 ? "success" : "info"}
+                  icon="activity"
+                />
+                <StatusCard
+                  title="Total Events"
+                  value={metrics?.events.total || 0}
+                  subtitle="all time"
+                  status="info"
+                  icon="activity"
+                />
+                <StatusCard
+                  title="Completed Sessions"
+                  value={metrics?.sessions.completed || 0}
+                  subtitle="successfully finished"
+                  status="info"
+                  icon="check"
+                />
+                <StatusCard
+                  title="Failed Sessions"
+                  value={metrics?.sessions.failed || 0}
+                  subtitle="with errors"
+                  status={metrics?.sessions.failed ? "error" : "info"}
+                  icon="error"
+                />
+              </div>
+            )}
 
             {/* Timeline Chart */}
-            <TimelineChart />
+            {isPanelVisible("timeline") && <TimelineChart />}
 
             {/* Main panels - 3 columns */}
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {/* Events Panel */}
-              <div className="rounded-lg border border-theme bg-theme-card">
-                <div className="border-b border-theme px-4 py-3">
-                  <h2 className="font-semibold text-theme-primary">Recent Events</h2>
+              {isPanelVisible("events") && (
+                <div className="rounded-lg border border-theme bg-theme-card">
+                  <div className="border-b border-theme px-4 py-3">
+                    <h2 className="font-semibold text-theme-primary">Recent Events</h2>
+                  </div>
+                  <div className="p-4 max-h-[500px] overflow-y-auto">
+                    <EventList events={events} />
+                  </div>
                 </div>
-                <div className="p-4 max-h-[500px] overflow-y-auto">
-                  <EventList events={events} />
-                </div>
-              </div>
+              )}
 
               {/* Sessions Panel */}
-              <div className="rounded-lg border border-theme bg-theme-card">
-                <div className="border-b border-theme px-4 py-3">
-                  <h2 className="font-semibold text-theme-primary">Sessions</h2>
+              {isPanelVisible("sessions") && (
+                <div className="rounded-lg border border-theme bg-theme-card">
+                  <div className="border-b border-theme px-4 py-3">
+                    <h2 className="font-semibold text-theme-primary">Sessions</h2>
+                  </div>
+                  <div className="p-4 max-h-[500px] overflow-y-auto">
+                    <SessionList sessions={sessions} />
+                  </div>
                 </div>
-                <div className="p-4 max-h-[500px] overflow-y-auto">
-                  <SessionList sessions={sessions} />
-                </div>
-              </div>
+              )}
 
               {/* Tasks Panel */}
-              <TaskPanel selectedProject={selectedProject} />
+              {isPanelVisible("tasks") && <TaskPanel selectedProject={selectedProject} />}
             </div>
 
             {/* Secondary panels - 2 columns */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Agents Panel */}
-              <AgentPanel
-                agents={agents}
-                counts={agentCounts}
-                onAgentsChange={(newAgents) => {
-                  setAgents(newAgents);
-                  const counts = { active: 0, idle: 0, error: 0, total: newAgents.length };
-                  newAgents.forEach((a) => {
-                    if (a.status in counts) {
-                      counts[a.status as keyof typeof counts]++;
-                    }
-                  });
-                  setAgentCounts(counts);
-                }}
-              />
+              {isPanelVisible("agents") && (
+                <AgentPanel
+                  agents={agents}
+                  counts={agentCounts}
+                  onAgentsChange={(newAgents) => {
+                    setAgents(newAgents);
+                    const counts = { active: 0, idle: 0, error: 0, total: newAgents.length };
+                    newAgents.forEach((a) => {
+                      if (a.status in counts) {
+                        counts[a.status as keyof typeof counts]++;
+                      }
+                    });
+                    setAgentCounts(counts);
+                  }}
+                />
+              )}
 
               {/* Alerts Panel */}
-              <AlertPanel />
+              {isPanelVisible("alerts") && <AlertPanel />}
             </div>
           </div>
         )}
@@ -325,6 +353,14 @@ export default function DashboardPage() {
 
       {/* Search Modal */}
       <SearchModal isOpen={showSearch} onClose={() => setShowSearch(false)} />
+
+      {/* Dashboard Customizer */}
+      <DashboardCustomizer
+        isOpen={showCustomizer}
+        onClose={() => setShowCustomizer(false)}
+        currentConfig={panelConfig}
+        onSave={(config) => setPanelConfig(config)}
+      />
     </div>
   );
 }
