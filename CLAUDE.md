@@ -19,7 +19,33 @@ cd server && bun run dev
 cd frontend && npm run dev
 ```
 
-## 重要なスキル
+## スキル一覧
+
+### 基本スキル
+
+| スキル | 説明 | 使用タイミング |
+|--------|------|---------------|
+| `/record-milestone` | マイルストーン記録 | セッション終了時、コミット後、タスク完了時 |
+| `/aod-setup` | AOD構築ガイド | セットアップや設定の質問時 |
+
+### マルチエージェント並列開発スキル
+
+| スキル | 説明 | 主な機能 |
+|--------|------|---------|
+| `/task-queue` | タスクキュー管理 | タスクの追加・割り当て・完了報告 |
+| `/agent-capability` | エージェント能力管理 | スキル登録・マッチング・推薦 |
+| `/file-lock` | ファイルロック管理 | ロック取得・解放・競合防止 |
+| `/conductor` | コンダクター統括 | 全体監視・タスク分解・リソース調整 |
+| `/shared-context` | 共有コンテキスト | 決定事項・ブロッカー・学習内容の共有 |
+| `/agent-health` | エージェント監視 | ハートビート・異常検出・回復 |
+
+### Git・コードレビュースキル
+
+| スキル | 説明 | 主な機能 |
+|--------|------|---------|
+| `/git-workflow` | Gitワークフロー | ブランチ管理・所有権・PR作成 |
+| `/code-review` | コードレビュー | 自動レビュー・指摘追跡・承認 |
+| `/merge-coordinator` | マージ調整 | 競合解決・マージキュー・リリース |
 
 ### /record-milestone - マイルストーン記録
 
@@ -39,6 +65,34 @@ cd frontend && npm run dev
 ```
 
 詳細: `.claude/skills/record-milestone/SKILL.md`
+
+### マルチエージェント作業フロー
+
+```
+1. タスク受領
+   /task-queue claim --id=xxx
+   /shared-context for-me
+
+2. 開発準備
+   /git-workflow branch --name=feat/xxx
+   /file-lock acquire --file=xxx
+
+3. 開発作業
+   （コード実装）
+   /shared-context post --type=decision
+
+4. コミット・PR
+   /git-workflow commit
+   /git-workflow pr
+
+5. レビュー・マージ
+   /code-review review
+   /merge-coordinator merge
+
+6. 完了報告
+   /task-queue complete
+   /record-milestone task_complete
+```
 
 ## API エンドポイント
 
