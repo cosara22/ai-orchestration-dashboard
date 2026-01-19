@@ -903,6 +903,193 @@ export const api = {
       total_candidates: number;
     }>(`/api/agents/match/task?${params}`);
   },
+
+  // File Lock API (Phase 15-C)
+  acquireLock: (data: {
+    project_id: string;
+    file_path: string;
+    agent_id: string;
+    lock_type?: "exclusive" | "shared";
+    reason?: string;
+    timeout_minutes?: number;
+  }) =>
+    fetchApi<{
+      success: boolean;
+      lock_id?: string;
+      file_path: string;
+      acquired_at?: string;
+      expires_at?: string;
+      extended?: boolean;
+      error?: string;
+      conflict?: {
+        lock_id: string;
+        locked_by: string;
+        agent_name: string;
+        lock_type: string;
+        acquired_at: string;
+        expires_at: string | null;
+        reason: string | null;
+      };
+      suggestion?: string;
+    }>("/api/locks/acquire", { method: "POST", body: JSON.stringify(data) }),
+
+  releaseLock: (data: { lock_id?: string; file_path?: string; agent_id: string }) =>
+    fetchApi<{ success: boolean; lock_id: string; released_at: string; duration_minutes: number }>(
+      "/api/locks/release",
+      { method: "POST", body: JSON.stringify(data) }
+    ),
+
+  checkLock: (projectId: string, filePath: string, agentId?: string) => {
+    const params = new URLSearchParams({ project_id: projectId, file_path: filePath });
+    if (agentId) params.set("agent_id", agentId);
+    return fetchApi<{
+      file_path: string;
+      locked: boolean;
+      lock_id?: string;
+      lock_type?: string;
+      locked_by?: string;
+      agent_name?: string;
+      is_mine?: boolean;
+      acquired_at?: string;
+      expires_at?: string;
+      reason?: string;
+    }>(`/api/locks/check?${params}`);
+  },
+
+  getLocks: (params?: { project_id?: string; status?: string; agent_id?: string; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.agent_id) searchParams.set("agent_id", params.agent_id);
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString();
+    return fetchApi<{ locks: FileLock[]; total: number; active: number; released: number; expired: number }>(
+      `/api/locks/list${query ? `?${query}` : ""}`
+    );
+  },
+
+  getAgentLocks: (agentId: string) =>
+    fetchApi<{ agent_id: string; locks: FileLock[]; total_locks: number }>(`/api/locks/agent/${agentId}`),
+
+  forceReleaseLock: (lockId: string, reason: string) =>
+    fetchApi<{ success: boolean; lock_id: string; force_released_at: string; reason: string }>(
+      "/api/locks/force-release",
+      { method: "POST", body: JSON.stringify({ lock_id: lockId, reason }) }
+    ),
+
+  cleanupLocks: () =>
+    fetchApi<{ success: boolean; expired_count: number; cleaned_at: string }>("/api/locks/cleanup", {
+      method: "POST",
+    }),
+
+  getLockConflicts: (params?: { project_id?: string; status?: string; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString();
+    return fetchApi<{ conflicts: LockConflict[]; total: number }>(`/api/locks/conflicts${query ? `?${query}` : ""}`);
+  },
+
+  resolveConflict: (conflictId: string, resolutionResult: string) =>
+    fetchApi<{ success: boolean; conflict_id: string; status: string }>(
+      `/api/locks/conflicts/${conflictId}/resolve`,
+      { method: "POST", body: JSON.stringify({ resolution_result: resolutionResult }) }
+    ),
+
+  // Shared Context API (Phase 15-D)
+  postContext: (data: {
+    project_id: string;
+    context_type: "decision" | "blocker" | "learning" | "status" | "question" | "answer";
+    title: string;
+    content: string;
+    author_agent_id: string;
+    visibility?: "all" | "team" | "specific";
+    target_agents?: string[];
+    priority?: number;
+    tags?: string[];
+    related_task_id?: string;
+    related_file_paths?: string[];
+    expires_at?: string;
+  }) =>
+    fetchApi<{ success: boolean; context: SharedContext }>("/api/context/post", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getContexts: (params?: {
+    project_id?: string;
+    type?: string;
+    author?: string;
+    status?: string;
+    priority?: number;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.type) searchParams.set("type", params.type);
+    if (params?.author) searchParams.set("author", params.author);
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.priority) searchParams.set("priority", String(params.priority));
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
+    const query = searchParams.toString();
+    return fetchApi<{ contexts: SharedContext[]; total: number; limit: number; offset: number }>(
+      `/api/context/list${query ? `?${query}` : ""}`
+    );
+  },
+
+  getContextsForMe: (agentId: string, projectId?: string, since?: string, limit?: number) => {
+    const params = new URLSearchParams({ agent_id: agentId });
+    if (projectId) params.set("project_id", projectId);
+    if (since) params.set("since", since);
+    if (limit) params.set("limit", String(limit));
+    return fetchApi<{
+      agent_id: string;
+      contexts: SharedContext[];
+      by_type: Record<string, SharedContext[]>;
+      total: number;
+      blockers: number;
+      urgent: number;
+    }>(`/api/context/for-me?${params}`);
+  },
+
+  getContext: (contextId: string) => fetchApi<SharedContext>(`/api/context/${contextId}`),
+
+  updateContext: (contextId: string, updates: Partial<{ title: string; content: string; priority: number; status: string; tags: string[] }>) =>
+    fetchApi<{ success: boolean; context: SharedContext }>(`/api/context/${contextId}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }),
+
+  deleteContext: (contextId: string, hard?: boolean) =>
+    fetchApi<{ success: boolean; action: string }>(`/api/context/${contextId}${hard ? "?hard=true" : ""}`, {
+      method: "DELETE",
+    }),
+
+  acknowledgeContext: (contextId: string, agentId: string) =>
+    fetchApi<{ success: boolean; context_id: string; acknowledged_by: string }>(
+      `/api/context/${contextId}/acknowledge`,
+      { method: "POST", body: JSON.stringify({ agent_id: agentId }) }
+    ),
+
+  searchContexts: (query: string, projectId?: string, limit?: number) => {
+    const params = new URLSearchParams({ q: query });
+    if (projectId) params.set("project_id", projectId);
+    if (limit) params.set("limit", String(limit));
+    return fetchApi<{ query: string; results: SharedContext[]; total: number }>(`/api/context/search/query?${params}`);
+  },
+
+  getContextStats: (projectId?: string) => {
+    const query = projectId ? `?project_id=${projectId}` : "";
+    return fetchApi<{
+      by_type: Record<string, number>;
+      by_priority: Record<string, number>;
+      recent_24h: number;
+      active_blockers: number;
+    }>(`/api/context/stats/summary${query}`);
+  },
 };
 
 // CCPM/WBS Types
@@ -1065,4 +1252,57 @@ export interface SemanticRecord {
   metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
+}
+
+// File Lock Types (Phase 15-C)
+export interface FileLock {
+  lock_id: string;
+  project_id: string;
+  file_path: string;
+  agent_id: string;
+  agent_name?: string;
+  lock_type: "exclusive" | "shared";
+  reason: string | null;
+  acquired_at: string;
+  expires_at: string | null;
+  released_at: string | null;
+  status: "active" | "released" | "expired" | "force_released";
+  is_expired?: boolean;
+}
+
+export interface LockConflict {
+  conflict_id: string;
+  project_id: string;
+  conflict_type: string;
+  involved_agents: string[];
+  involved_resources: Record<string, unknown>;
+  description: string | null;
+  resolution_strategy: string | null;
+  resolution_result: string | null;
+  detected_at: string;
+  resolved_at: string | null;
+  status: "detected" | "resolved";
+}
+
+// Shared Context Types (Phase 15-D)
+export interface SharedContext {
+  context_id: string;
+  project_id: string;
+  context_type: "decision" | "blocker" | "learning" | "status" | "question" | "answer";
+  context_type_label?: string;
+  title: string;
+  content: string;
+  author_agent_id: string;
+  author_name?: string;
+  visibility: "all" | "team" | "specific";
+  priority: number;
+  priority_label?: string;
+  tags: string[];
+  related_task_id: string | null;
+  related_file_paths: string[];
+  expires_at: string | null;
+  status: "active" | "archived" | "expired";
+  created_at: string;
+  updated_at: string;
+  is_mine?: boolean;
 }

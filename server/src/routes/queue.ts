@@ -3,6 +3,7 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import { getDb } from "../lib/db";
 import { broadcastToClients } from "../ws/handler";
+import { updateCapabilityFromTaskResult } from "../lib/capabilityLearning";
 
 export const queueRouter = new Hono();
 
@@ -453,6 +454,18 @@ queueRouter.post("/:id/complete", async (c) => {
       data: parsedTask,
     });
 
+    // Update capability proficiency based on task completion (async, don't block response)
+    if (updatedTask.assigned_to && parsedTask.required_capabilities.length > 0) {
+      updateCapabilityFromTaskResult({
+        task_id: taskId,
+        agent_id: updatedTask.assigned_to,
+        success: true,
+        completion_time_minutes: actualMinutes,
+        estimated_minutes: updatedTask.estimated_minutes,
+        required_capabilities: parsedTask.required_capabilities,
+      }).catch((err) => console.error("Capability learning error:", err));
+    }
+
     return c.json({ success: true, task: parsedTask });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -508,6 +521,22 @@ queueRouter.post("/:id/fail", async (c) => {
       action: "task_failed",
       data: parsedTask,
     });
+
+    // Update capability proficiency based on task failure (async)
+    if (updatedTask.assigned_to && parsedTask.required_capabilities.length > 0) {
+      const startedAt = task.started_at ? new Date(task.started_at) : new Date();
+      const failedAt = new Date(timestamp);
+      const elapsedMinutes = Math.round((failedAt.getTime() - startedAt.getTime()) / 60000);
+
+      updateCapabilityFromTaskResult({
+        task_id: taskId,
+        agent_id: updatedTask.assigned_to,
+        success: false,
+        completion_time_minutes: elapsedMinutes,
+        estimated_minutes: updatedTask.estimated_minutes,
+        required_capabilities: parsedTask.required_capabilities,
+      }).catch((err) => console.error("Capability learning error:", err));
+    }
 
     return c.json({ success: true, task: parsedTask });
   } catch (error) {
