@@ -3,6 +3,13 @@
 Claude Code Hook: Send events to AI Orchestration Dashboard
 
 This hook is triggered by Claude Code events and sends them to the AOD API.
+Supports multi-agent orchestration with heartbeat functionality.
+
+Environment Variables:
+  AOD_API_URL    - Dashboard URL (default: http://localhost:4000)
+  AOD_PROJECT_ID - Project ID for multi-agent context
+  AOD_AGENT_ID   - Agent ID for multi-agent mode
+  AOD_AGENT_NAME - Agent name for display
 """
 
 import json
@@ -10,9 +17,12 @@ import os
 import sys
 import urllib.request
 import urllib.error
-from datetime import datetime
+from datetime import datetime, timezone
 
 API_URL = os.environ.get("AOD_API_URL", "http://localhost:4000")
+PROJECT_ID = os.environ.get("AOD_PROJECT_ID", "")
+AGENT_ID = os.environ.get("AOD_AGENT_ID", "")
+AGENT_NAME = os.environ.get("AOD_AGENT_NAME", "")
 
 
 def send_event(event_type: str, payload: dict, session_id: str | None = None) -> bool:
@@ -22,11 +32,19 @@ def send_event(event_type: str, payload: dict, session_id: str | None = None) ->
     data = {
         "event_type": event_type,
         "payload": payload,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
     if session_id:
         data["session_id"] = session_id
+
+    # Add multi-agent context
+    if AGENT_ID:
+        data["agent_id"] = AGENT_ID
+    if AGENT_NAME:
+        data["agent_name"] = AGENT_NAME
+    if PROJECT_ID:
+        data["project_id"] = PROJECT_ID
 
     try:
         req = urllib.request.Request(
@@ -39,12 +57,31 @@ def send_event(event_type: str, payload: dict, session_id: str | None = None) ->
         with urllib.request.urlopen(req, timeout=5) as response:
             result = json.loads(response.read().decode("utf-8"))
             return result.get("success", False)
-    except urllib.error.URLError as e:
-        print(f"Failed to send event: {e}", file=sys.stderr)
+    except urllib.error.URLError:
         return False
-    except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
+    except Exception:
         return False
+
+
+def send_heartbeat() -> None:
+    """Send agent heartbeat to maintain active status."""
+    if not AGENT_ID:
+        return
+
+    url = f"{API_URL}/api/agents/{AGENT_ID}/heartbeat"
+    data = {"message": "active"}
+
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(data).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=3) as _:
+            pass
+    except Exception:
+        pass  # Heartbeat failures are non-critical
 
 
 def handle_hook(hook_name: str) -> None:
@@ -56,7 +93,6 @@ def handle_hook(hook_name: str) -> None:
 
         hook_data = json.loads(input_data)
     except json.JSONDecodeError:
-        print("Invalid JSON input", file=sys.stderr)
         return
 
     # Extract session ID if available
@@ -91,6 +127,10 @@ def handle_hook(hook_name: str) -> None:
         payload["message"] = hook_data.get("message", "")
 
     send_event(event_type, payload, session_id)
+
+    # Send heartbeat for active hooks (multi-agent mode)
+    if AGENT_ID and hook_name in ["PostToolUse", "Notification"]:
+        send_heartbeat()
 
 
 if __name__ == "__main__":

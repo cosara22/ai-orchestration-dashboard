@@ -6,8 +6,11 @@ Claude Code Hooks から AOD にイベントを送信するスクリプト
   echo '{"session_id":"xxx","tool_name":"Read"}' | python send_event.py PostToolUse
 
 環境変数:
-  AOD_URL      - ダッシュボードURL (default: http://localhost:4000)
-  AOD_PROJECT  - プロジェクト名 (default: カレントディレクトリ名)
+  AOD_URL        - ダッシュボードURL (default: http://localhost:4000)
+  AOD_PROJECT    - プロジェクト名 (default: カレントディレクトリ名)
+  AOD_PROJECT_ID - プロジェクトID (optional)
+  AOD_AGENT_ID   - エージェントID (optional, for multi-agent)
+  AOD_AGENT_NAME - エージェント名 (optional, for multi-agent)
 """
 
 import sys
@@ -47,6 +50,9 @@ except ImportError:
 # 設定
 DASHBOARD_URL = os.environ.get("AOD_URL", "http://localhost:4000")
 SOURCE_PROJECT = os.environ.get("AOD_PROJECT", os.path.basename(os.getcwd()))
+PROJECT_ID = os.environ.get("AOD_PROJECT_ID", "")
+AGENT_ID = os.environ.get("AOD_AGENT_ID", "")
+AGENT_NAME = os.environ.get("AOD_AGENT_NAME", "")
 
 def main():
     if len(sys.argv) < 2:
@@ -81,16 +87,42 @@ def main():
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
+    # マルチエージェント情報を追加
+    if AGENT_ID:
+        event["agent_id"] = AGENT_ID
+    if AGENT_NAME:
+        event["agent_name"] = AGENT_NAME
+    if PROJECT_ID:
+        event["project_id"] = PROJECT_ID
+
     # 送信
     try:
         result = post_event(f"{DASHBOARD_URL}/api/events", event)
         # デバッグ用: 成功時の出力
         # print(f"Event sent: {result}", file=sys.stderr)
+
+        # エージェントハートビート送信（マルチエージェントモード時）
+        if AGENT_ID and event_type in ["PostToolUse", "Notification"]:
+            send_heartbeat()
     except Exception as e:
         # エラーは無視（Hooks失敗でエージェントを止めない）
         # デバッグ時はコメントアウトを外す
         # print(f"Event send failed: {e}", file=sys.stderr)
         pass
+
+
+def send_heartbeat():
+    """エージェントハートビートを送信"""
+    if not AGENT_ID:
+        return
+
+    try:
+        heartbeat_data = {
+            "message": "active"
+        }
+        post_event(f"{DASHBOARD_URL}/api/agents/{AGENT_ID}/heartbeat", heartbeat_data)
+    except Exception:
+        pass  # ハートビート失敗は無視
 
 if __name__ == "__main__":
     main()
