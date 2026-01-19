@@ -428,6 +428,292 @@ function migrateDocumentsTables() {
 
 migrateDocumentsTables();
 
+// Auto-migrate: Create multi-agent orchestration tables (Phase 15)
+function migrateMultiAgentTables() {
+  try {
+    // Task Queue table
+    const taskQueueExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='task_queue'"
+    ).get();
+
+    if (!taskQueueExists) {
+      console.log("Migrating: Creating task_queue table...");
+      db.exec(`
+        CREATE TABLE task_queue (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          queue_id TEXT UNIQUE NOT NULL,
+          project_id TEXT NOT NULL,
+          task_id TEXT NOT NULL,
+          priority INTEGER DEFAULT 1,
+          required_capabilities TEXT,
+          assigned_agent_id TEXT,
+          status TEXT DEFAULT 'pending',
+          enqueued_at TEXT DEFAULT (datetime('now')),
+          assigned_at TEXT,
+          started_at TEXT,
+          completed_at TEXT,
+          timeout_minutes INTEGER DEFAULT 60,
+          retry_count INTEGER DEFAULT 0,
+          max_retries INTEGER DEFAULT 3,
+          metadata TEXT,
+          FOREIGN KEY (project_id) REFERENCES projects(project_id),
+          FOREIGN KEY (task_id) REFERENCES tasks(task_id),
+          FOREIGN KEY (assigned_agent_id) REFERENCES agents(agent_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_task_queue_status ON task_queue(status)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_task_queue_priority ON task_queue(priority, enqueued_at)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_task_queue_agent ON task_queue(assigned_agent_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_task_queue_project ON task_queue(project_id)");
+      console.log("Task queue table created.");
+    }
+
+    // Agent Capabilities table
+    const capabilitiesExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_capabilities'"
+    ).get();
+
+    if (!capabilitiesExists) {
+      console.log("Migrating: Creating agent_capabilities table...");
+      db.exec(`
+        CREATE TABLE agent_capabilities (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          capability_id TEXT UNIQUE NOT NULL,
+          agent_id TEXT NOT NULL,
+          capability TEXT NOT NULL,
+          proficiency INTEGER DEFAULT 3,
+          verified INTEGER DEFAULT 0,
+          last_used TEXT,
+          success_rate REAL DEFAULT 0.0,
+          tasks_completed INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_agent_capabilities_agent ON agent_capabilities(agent_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_agent_capabilities_capability ON agent_capabilities(capability)");
+      console.log("Agent capabilities table created.");
+    }
+
+    // Capability Tags master table
+    const tagsExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='capability_tags'"
+    ).get();
+
+    if (!tagsExists) {
+      console.log("Migrating: Creating capability_tags table...");
+      db.exec(`
+        CREATE TABLE capability_tags (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          tag TEXT UNIQUE NOT NULL,
+          category TEXT NOT NULL,
+          description TEXT,
+          parent_tag TEXT,
+          created_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_capability_tags_category ON capability_tags(category)");
+      console.log("Capability tags table created.");
+
+      // Insert default capability tags
+      const defaultTags = [
+        // Languages
+        { tag: 'typescript', category: 'language', description: 'TypeScript言語', parent_tag: null },
+        { tag: 'javascript', category: 'language', description: 'JavaScript言語', parent_tag: null },
+        { tag: 'python', category: 'language', description: 'Python言語', parent_tag: null },
+        { tag: 'go', category: 'language', description: 'Go言語', parent_tag: null },
+        { tag: 'rust', category: 'language', description: 'Rust言語', parent_tag: null },
+        { tag: 'sql', category: 'language', description: 'SQL', parent_tag: null },
+        // Frameworks - Frontend
+        { tag: 'frontend', category: 'framework', description: 'フロントエンド全般', parent_tag: null },
+        { tag: 'react', category: 'framework', description: 'Reactフレームワーク', parent_tag: 'frontend' },
+        { tag: 'nextjs', category: 'framework', description: 'Next.jsフレームワーク', parent_tag: 'frontend' },
+        { tag: 'vue', category: 'framework', description: 'Vue.jsフレームワーク', parent_tag: 'frontend' },
+        // Frameworks - Backend
+        { tag: 'backend', category: 'framework', description: 'バックエンド全般', parent_tag: null },
+        { tag: 'hono', category: 'framework', description: 'Honoフレームワーク', parent_tag: 'backend' },
+        { tag: 'express', category: 'framework', description: 'Expressフレームワーク', parent_tag: 'backend' },
+        { tag: 'fastapi', category: 'framework', description: 'FastAPIフレームワーク', parent_tag: 'backend' },
+        // Domain
+        { tag: 'api', category: 'domain', description: 'API設計・実装', parent_tag: null },
+        { tag: 'database', category: 'domain', description: 'データベース設計・操作', parent_tag: null },
+        { tag: 'authentication', category: 'domain', description: '認証・認可', parent_tag: null },
+        { tag: 'testing', category: 'domain', description: 'テスト設計・実装', parent_tag: null },
+        { tag: 'security', category: 'domain', description: 'セキュリティ', parent_tag: null },
+        { tag: 'performance', category: 'domain', description: 'パフォーマンス最適化', parent_tag: null },
+        // Tools
+        { tag: 'git', category: 'tool', description: 'Gitバージョン管理', parent_tag: null },
+        { tag: 'docker', category: 'tool', description: 'Dockerコンテナ', parent_tag: null },
+        { tag: 'ci-cd', category: 'tool', description: 'CI/CDパイプライン', parent_tag: null },
+      ];
+
+      const insertTag = db.prepare(
+        "INSERT INTO capability_tags (tag, category, description, parent_tag) VALUES (?, ?, ?, ?)"
+      );
+      for (const t of defaultTags) {
+        insertTag.run(t.tag, t.category, t.description, t.parent_tag);
+      }
+      console.log("Default capability tags inserted.");
+    }
+
+    // File Locks table
+    const locksExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='file_locks'"
+    ).get();
+
+    if (!locksExists) {
+      console.log("Migrating: Creating file_locks table...");
+      db.exec(`
+        CREATE TABLE file_locks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          lock_id TEXT UNIQUE NOT NULL,
+          project_id TEXT NOT NULL,
+          file_path TEXT NOT NULL,
+          agent_id TEXT NOT NULL,
+          lock_type TEXT DEFAULT 'exclusive',
+          reason TEXT,
+          acquired_at TEXT DEFAULT (datetime('now')),
+          expires_at TEXT,
+          released_at TEXT,
+          status TEXT DEFAULT 'active',
+          FOREIGN KEY (project_id) REFERENCES projects(project_id),
+          FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_file_locks_file ON file_locks(project_id, file_path)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_file_locks_agent ON file_locks(agent_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_file_locks_status ON file_locks(status)");
+      console.log("File locks table created.");
+    }
+
+    // Shared Context table
+    const contextExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='shared_context'"
+    ).get();
+
+    if (!contextExists) {
+      console.log("Migrating: Creating shared_context table...");
+      db.exec(`
+        CREATE TABLE shared_context (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          context_id TEXT UNIQUE NOT NULL,
+          project_id TEXT NOT NULL,
+          context_type TEXT NOT NULL,
+          title TEXT NOT NULL,
+          content TEXT NOT NULL,
+          author_agent_id TEXT,
+          visibility TEXT DEFAULT 'all',
+          priority INTEGER DEFAULT 0,
+          tags TEXT,
+          related_task_id TEXT,
+          related_file_paths TEXT,
+          expires_at TEXT,
+          status TEXT DEFAULT 'active',
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (project_id) REFERENCES projects(project_id),
+          FOREIGN KEY (author_agent_id) REFERENCES agents(agent_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_shared_context_project ON shared_context(project_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_shared_context_type ON shared_context(context_type)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_shared_context_status ON shared_context(status)");
+      console.log("Shared context table created.");
+    }
+
+    // Conductor Decisions table
+    const decisionsExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='conductor_decisions'"
+    ).get();
+
+    if (!decisionsExists) {
+      console.log("Migrating: Creating conductor_decisions table...");
+      db.exec(`
+        CREATE TABLE conductor_decisions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          decision_id TEXT UNIQUE NOT NULL,
+          project_id TEXT NOT NULL,
+          decision_type TEXT NOT NULL,
+          description TEXT NOT NULL,
+          affected_agents TEXT,
+          affected_tasks TEXT,
+          rationale TEXT,
+          outcome TEXT DEFAULT 'pending',
+          decided_at TEXT DEFAULT (datetime('now')),
+          executed_at TEXT,
+          metadata TEXT,
+          FOREIGN KEY (project_id) REFERENCES projects(project_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_conductor_decisions_project ON conductor_decisions(project_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_conductor_decisions_type ON conductor_decisions(decision_type)");
+      console.log("Conductor decisions table created.");
+    }
+
+    // Conflict History table
+    const conflictsExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='conflict_history'"
+    ).get();
+
+    if (!conflictsExists) {
+      console.log("Migrating: Creating conflict_history table...");
+      db.exec(`
+        CREATE TABLE conflict_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          conflict_id TEXT UNIQUE NOT NULL,
+          project_id TEXT NOT NULL,
+          conflict_type TEXT NOT NULL,
+          involved_agents TEXT NOT NULL,
+          involved_resources TEXT NOT NULL,
+          description TEXT,
+          resolution_strategy TEXT,
+          resolution_result TEXT,
+          detected_at TEXT DEFAULT (datetime('now')),
+          resolved_at TEXT,
+          status TEXT DEFAULT 'detected',
+          FOREIGN KEY (project_id) REFERENCES projects(project_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_conflict_history_project ON conflict_history(project_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_conflict_history_status ON conflict_history(status)");
+      console.log("Conflict history table created.");
+    }
+
+    // Agent Health table
+    const healthExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_health'"
+    ).get();
+
+    if (!healthExists) {
+      console.log("Migrating: Creating agent_health table...");
+      db.exec(`
+        CREATE TABLE agent_health (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          health_id TEXT UNIQUE NOT NULL,
+          agent_id TEXT NOT NULL,
+          status TEXT NOT NULL,
+          health TEXT DEFAULT 'healthy',
+          current_task_id TEXT,
+          progress INTEGER,
+          memory_usage_mb INTEGER,
+          cpu_percent REAL,
+          message TEXT,
+          recorded_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_agent_health_agent ON agent_health(agent_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_agent_health_recorded ON agent_health(recorded_at)");
+      console.log("Agent health table created.");
+    }
+
+  } catch (error) {
+    console.error("Multi-agent migration error:", error);
+  }
+}
+
+migrateMultiAgentTables();
+
 export function getDb() {
   return db;
 }

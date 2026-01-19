@@ -18,6 +18,7 @@ import { SearchModal } from "@/components/SearchModal";
 import { DashboardCustomizer, PanelConfig, loadPanelConfig } from "@/components/DashboardCustomizer";
 import { CCPMPanel } from "@/components/CCPMPanel";
 import { FeverChart } from "@/components/FeverChart";
+import { TaskQueuePanel } from "@/components/TaskQueuePanel";
 import { Activity, RefreshCw, AlertTriangle, X, Settings, Search, LayoutGrid } from "lucide-react";
 import { CCPMProject } from "@/lib/api";
 import { useToast } from "@/components/Toast";
@@ -336,6 +337,16 @@ export default function DashboardPage() {
                 />
               )}
 
+              {/* Task Queue Panel */}
+              {isPanelVisible("taskQueue") && (
+                <div className="rounded-lg border border-theme bg-theme-card max-h-[600px]">
+                  <TaskQueuePanel projectId={selectedProject || undefined} />
+                </div>
+              )}
+            </div>
+
+            {/* Tertiary panels - Alerts */}
+            <div className="grid grid-cols-1 gap-6">
               {/* Alerts Panel */}
               {isPanelVisible("alerts") && <AlertPanel />}
             </div>

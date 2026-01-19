@@ -174,6 +174,67 @@ export interface AlertHistory {
   target?: string;
 }
 
+// Task Queue Types (Phase 15-A)
+export interface QueueTask {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  required_capabilities: string[];
+  priority: number; // 0=Critical, 1=High, 2=Medium, 3=Low, 4=Background
+  status: "pending" | "assigned" | "in_progress" | "completed" | "failed" | "cancelled";
+  estimated_minutes: number | null;
+  actual_minutes: number | null;
+  dependencies: string[];
+  assigned_to: string | null;
+  assigned_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  error_message: string | null;
+  retry_count: number;
+  metadata: Record<string, any> | null;
+  result: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+  queue_score?: number;
+}
+
+export interface QueueStats {
+  by_status: {
+    pending: number;
+    assigned: number;
+    in_progress: number;
+    completed: number;
+    failed: number;
+    cancelled: number;
+  };
+  by_priority: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    background: number;
+  };
+  average_completion_minutes: number | null;
+  agent_workload: Array<{ assigned_to: string; task_count: number }>;
+  recent_failures: Array<{ id: string; title: string; error_message: string; retry_count: number; updated_at: string }>;
+}
+
+export interface AgentCapability {
+  agent_id: string;
+  tag: string;
+  proficiency: number;
+  category?: string;
+  tag_description?: string;
+  updated_at: string;
+}
+
+export interface CapabilityTag {
+  tag: string;
+  category: string;
+  description: string | null;
+}
+
 export const api = {
   // Events
   getEvents: (params?: { limit?: number; offset?: number; event_type?: string; project?: string; session_id?: string }) => {
@@ -685,6 +746,163 @@ export const api = {
       "/api/milestones/agent/progress",
       { method: "POST", body: JSON.stringify(data) }
     ),
+
+  // Task Queue API (Phase 15-A)
+  getQueueTasks: (params?: { project_id?: string; status?: string; limit?: number; offset?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
+    const query = searchParams.toString();
+    return fetchApi<{ tasks: QueueTask[]; total: number; limit: number; offset: number }>(
+      `/api/queue/list${query ? `?${query}` : ""}`
+    );
+  },
+
+  enqueueTask: (task: {
+    project_id: string;
+    title: string;
+    description?: string;
+    required_capabilities?: string[];
+    priority?: number;
+    estimated_minutes?: number;
+    dependencies?: string[];
+    metadata?: Record<string, any>;
+  }) =>
+    fetchApi<{ success: boolean; task: QueueTask }>("/api/queue/enqueue", {
+      method: "POST",
+      body: JSON.stringify(task),
+    }),
+
+  getNextTask: (agentId: string, projectId?: string) => {
+    const params = new URLSearchParams({ agent_id: agentId });
+    if (projectId) params.set("project_id", projectId);
+    return fetchApi<{ task: QueueTask | null; message?: string }>(`/api/queue/next?${params}`);
+  },
+
+  assignTask: (taskId: string, agentId: string) =>
+    fetchApi<{ success: boolean; task: QueueTask }>(`/api/queue/${taskId}/assign`, {
+      method: "POST",
+      body: JSON.stringify({ agent_id: agentId }),
+    }),
+
+  startTask: (taskId: string) =>
+    fetchApi<{ success: boolean; task: QueueTask }>(`/api/queue/${taskId}/start`, {
+      method: "POST",
+    }),
+
+  completeTask: (taskId: string, result?: Record<string, any>) =>
+    fetchApi<{ success: boolean; task: QueueTask }>(`/api/queue/${taskId}/complete`, {
+      method: "POST",
+      body: JSON.stringify({ result }),
+    }),
+
+  failTask: (taskId: string, errorMessage: string) =>
+    fetchApi<{ success: boolean; task: QueueTask }>(`/api/queue/${taskId}/fail`, {
+      method: "POST",
+      body: JSON.stringify({ error_message: errorMessage }),
+    }),
+
+  retryTask: (taskId: string) =>
+    fetchApi<{ success: boolean; task: QueueTask }>(`/api/queue/${taskId}/retry`, {
+      method: "POST",
+    }),
+
+  cancelTask: (taskId: string) =>
+    fetchApi<{ success: boolean; message: string }>(`/api/queue/${taskId}`, {
+      method: "DELETE",
+    }),
+
+  getQueueStats: (projectId?: string) => {
+    const query = projectId ? `?project_id=${projectId}` : "";
+    return fetchApi<QueueStats>(`/api/queue/stats${query}`);
+  },
+
+  dispatchTasks: (projectId?: string, max?: number) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set("project_id", projectId);
+    if (max) params.set("max", String(max));
+    const query = params.toString();
+    return fetchApi<{
+      success: boolean;
+      assignments: Array<{ task_id: string; title: string; agent_id: string; agent_name: string; priority: number }>;
+      skipped: Array<{ task_id: string; title: string; reason: string }>;
+      summary: { assigned: number; skipped: number; remaining_pending: number };
+    }>(`/api/queue/dispatch${query ? `?${query}` : ""}`, { method: "POST" });
+  },
+
+  checkTimeouts: (timeoutMinutes?: number) => {
+    const query = timeoutMinutes ? `?timeout_minutes=${timeoutMinutes}` : "";
+    return fetchApi<{
+      success: boolean;
+      timeout_minutes: number;
+      processed: Array<{ task_id: string; title: string; action: string; retry_count: number }>;
+      total_processed: number;
+    }>(`/api/queue/timeout-check${query}`, { method: "POST" });
+  },
+
+  // Agent Capability API (Phase 15-A/B)
+  getAgentCapabilities: (agentId: string) =>
+    fetchApi<{ agent_id: string; agent_name: string; capabilities: AgentCapability[] }>(
+      `/api/agents/${agentId}/capabilities`
+    ),
+
+  registerCapabilities: (agentId: string, capabilities: Array<{ tag: string; proficiency?: number }>) =>
+    fetchApi<{ success: boolean; agent_id: string; capabilities: AgentCapability[] }>(
+      `/api/agents/${agentId}/capabilities`,
+      { method: "POST", body: JSON.stringify({ capabilities }) }
+    ),
+
+  removeCapability: (agentId: string, tag: string) =>
+    fetchApi<{ success: boolean }>(`/api/agents/${agentId}/capabilities/${tag}`, {
+      method: "DELETE",
+    }),
+
+  getAvailableAgents: (params?: { tags?: string[]; max_workload?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.tags?.length) searchParams.set("tags", params.tags.join(","));
+    if (params?.max_workload) searchParams.set("max_workload", String(params.max_workload));
+    const query = searchParams.toString();
+    return fetchApi<{
+      available_agents: Array<Agent & { current_workload: number; capabilities: AgentCapability[]; availability_score: number }>;
+      total: number;
+      filter: { max_workload: number; required_tags: string[] };
+    }>(`/api/agents/status/available${query ? `?${query}` : ""}`);
+  },
+
+  getCapabilityTags: (category?: string) => {
+    const query = category ? `?category=${category}` : "";
+    return fetchApi<{ tags: CapabilityTag[]; grouped: Record<string, CapabilityTag[]> }>(
+      `/api/agents/capability/tags${query}`
+    );
+  },
+
+  addCapabilityTag: (tag: string, category: string, description?: string) =>
+    fetchApi<{ success: boolean; tag: CapabilityTag }>("/api/agents/capability/tags", {
+      method: "POST",
+      body: JSON.stringify({ tag, category, description }),
+    }),
+
+  matchAgentForTask: (tags: string[], excludeAgents?: string[]) => {
+    const params = new URLSearchParams({ tags: tags.join(",") });
+    if (excludeAgents?.length) params.set("exclude", excludeAgents.join(","));
+    return fetchApi<{
+      required_tags: string[];
+      candidates: Array<{
+        agent_id: string;
+        agent_name: string;
+        status: string;
+        current_workload: number;
+        capabilities: AgentCapability[];
+        match_score: number;
+        final_score: number;
+        last_heartbeat: string;
+      }>;
+      best_match: { agent_id: string; agent_name: string } | null;
+      total_candidates: number;
+    }>(`/api/agents/match/task?${params}`);
+  },
 };
 
 // CCPM/WBS Types
