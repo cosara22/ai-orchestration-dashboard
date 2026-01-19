@@ -1,13 +1,41 @@
 import { Database } from "bun:sqlite";
 import { join, dirname } from "path";
 
-const dbPath = join(dirname(dirname(dirname(import.meta.path))), "..", "data", "aod.db");
+// WSL/Windows両対応のパス解決
+function resolveDbPath(): string {
+  // import.meta.dirを使用（ファイルパスではなくディレクトリパス）
+  let currentDir = import.meta.dir;
+
+  // WSLからWindows pathを実行した場合、パスが混在することがある
+  // /mnt/c/... 形式に正規化
+  if (currentDir.includes('\\')) {
+    currentDir = currentDir.replace(/\\/g, '/');
+  }
+
+  // server/src/lib から server/../data へ
+  const serverDir = dirname(dirname(currentDir)); // server/
+  const dataDir = join(dirname(serverDir), "data");
+  return join(dataDir, "aod.db");
+}
+
+const dbPath = resolveDbPath();
 
 export const db = new Database(dbPath);
 
 // Enable WAL mode for better concurrent access
-db.exec("PRAGMA journal_mode = WAL");
-db.exec("PRAGMA synchronous = NORMAL");
+// Note: WAL mode may fail on WSL accessing Windows filesystem
+try {
+  db.exec("PRAGMA journal_mode = WAL");
+  db.exec("PRAGMA synchronous = NORMAL");
+} catch (e) {
+  console.warn("WAL mode not supported (likely WSL/Windows filesystem), using DELETE mode");
+  try {
+    db.exec("PRAGMA journal_mode = DELETE");
+    db.exec("PRAGMA synchronous = FULL");
+  } catch (e2) {
+    console.warn("Failed to set journal mode:", e2);
+  }
+}
 
 // Auto-migrate: Recreate tasks table with nullable session_id
 function migrateTasksTable() {
