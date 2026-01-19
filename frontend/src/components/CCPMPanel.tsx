@@ -13,18 +13,30 @@ import {
   Activity,
   TrendingUp,
   X,
+  GanttChart as GanttIcon,
+  List,
+  FileText,
+  Flag,
 } from "lucide-react";
-import { api, CCPMProject, WBSItem } from "@/lib/api";
+import { api, CCPMProject, WBSItem, WBSDependency } from "@/lib/api";
 import { useToast } from "./Toast";
+import { GanttChart } from "./GanttChart";
+import { DocParserModal } from "./DocParserModal";
+import { MilestoneRecorder } from "./MilestoneRecorder";
 
 interface CCPMPanelProps {
   onSelectProject?: (project: CCPMProject | null) => void;
 }
 
+type ViewMode = "tree" | "gantt";
+
 export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
   const [projects, setProjects] = useState<CCPMProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<CCPMProject | null>(null);
   const [wbsItems, setWbsItems] = useState<WBSItem[]>([]);
+  const [flatWbsItems, setFlatWbsItems] = useState<WBSItem[]>([]);
+  const [dependencies, setDependencies] = useState<WBSDependency[]>([]);
+  const [criticalChain, setCriticalChain] = useState<string[]>([]);
   const [bufferData, setBufferData] = useState<{
     project_buffer: { size: number; consumed: number; consumed_percent: number; remaining: number };
     progress: { completed_duration: number; total_duration: number; percent: number };
@@ -34,6 +46,9 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("tree");
+  const [showDocParser, setShowDocParser] = useState(false);
+  const [showMilestones, setShowMilestones] = useState(false);
   const { showToast } = useToast();
 
   const fetchProjects = useCallback(async () => {
@@ -47,10 +62,32 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
 
   const fetchWBS = useCallback(async (projectId: string) => {
     try {
-      const data = await api.getWBS(projectId);
-      setWbsItems(data.items);
+      const [treeData, flatData] = await Promise.all([
+        api.getWBS(projectId),
+        api.getWBS(projectId, true),
+      ]);
+      setWbsItems(treeData.items);
+      setFlatWbsItems(flatData.items);
     } catch (error) {
       console.error("Failed to fetch WBS:", error);
+    }
+  }, []);
+
+  const fetchDependencies = useCallback(async (projectId: string) => {
+    try {
+      const data = await api.getDependencies(projectId);
+      setDependencies(data.dependencies);
+    } catch (error) {
+      console.error("Failed to fetch dependencies:", error);
+    }
+  }, []);
+
+  const fetchCriticalChain = useCallback(async (projectId: string) => {
+    try {
+      const data = await api.getCriticalChain(projectId);
+      setCriticalChain(data.critical_chain);
+    } catch (error) {
+      console.error("Failed to fetch critical chain:", error);
     }
   }, []);
 
@@ -71,13 +108,18 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
     if (selectedProject) {
       fetchWBS(selectedProject.project_id);
       fetchBuffers(selectedProject.project_id);
+      fetchDependencies(selectedProject.project_id);
+      fetchCriticalChain(selectedProject.project_id);
       onSelectProject?.(selectedProject);
     } else {
       setWbsItems([]);
+      setFlatWbsItems([]);
+      setDependencies([]);
+      setCriticalChain([]);
       setBufferData(null);
       onSelectProject?.(null);
     }
-  }, [selectedProject, fetchWBS, fetchBuffers, onSelectProject]);
+  }, [selectedProject, fetchWBS, fetchBuffers, fetchDependencies, fetchCriticalChain, onSelectProject]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -309,16 +351,92 @@ export function CCPMPanel({ onSelectProject }: CCPMPanelProps) {
             </div>
           )}
 
-          {/* WBS Tree */}
+          {/* View Mode Toggle & Actions */}
+          <div className="flex items-center justify-between p-2 border-b border-[var(--border-primary)]">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setViewMode("tree")}
+                className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${
+                  viewMode === "tree"
+                    ? "bg-purple-500/20 text-purple-400"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                }`}
+              >
+                <List className="w-3 h-3" />
+                Tree
+              </button>
+              <button
+                onClick={() => setViewMode("gantt")}
+                className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${
+                  viewMode === "gantt"
+                    ? "bg-purple-500/20 text-purple-400"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                }`}
+              >
+                <GanttIcon className="w-3 h-3" />
+                Gantt
+              </button>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowDocParser(true)}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                title="ドキュメントからWBS生成"
+              >
+                <FileText className="w-3 h-3" />
+                Doc
+              </button>
+              <button
+                onClick={() => setShowMilestones(true)}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                title="マイルストーン管理"
+              >
+                <Flag className="w-3 h-3" />
+                MS
+              </button>
+            </div>
+          </div>
+
+          {/* WBS View */}
           <div className="flex-1 overflow-auto p-2">
             {wbsItems.length === 0 ? (
               <div className="text-center py-8 text-[var(--text-secondary)] text-sm">
                 No WBS items yet. They will be created automatically from Claude Code sessions.
               </div>
-            ) : (
+            ) : viewMode === "tree" ? (
               <div>{wbsItems.map((item) => renderWBSItem(item))}</div>
+            ) : (
+              <GanttChart
+                items={flatWbsItems}
+                dependencies={dependencies}
+                criticalChain={criticalChain}
+                onItemClick={(item) => {
+                  showToast(`Selected: ${item.code} ${item.title}`, "info");
+                }}
+              />
             )}
           </div>
+
+          {/* Document Parser Modal */}
+          <DocParserModal
+            isOpen={showDocParser}
+            onClose={() => setShowDocParser(false)}
+            projectId={selectedProject.project_id}
+            onWbsItemsAdded={() => {
+              fetchWBS(selectedProject.project_id);
+              showToast("WBS items added from document", "success");
+            }}
+          />
+
+          {/* Milestone Recorder Modal */}
+          <MilestoneRecorder
+            isOpen={showMilestones}
+            onClose={() => setShowMilestones(false)}
+            projectId={selectedProject.project_id}
+            onMilestoneCreated={() => {
+              showToast("Milestone updated", "success");
+            }}
+          />
         </>
       )}
     </div>

@@ -327,6 +327,107 @@ function migrateCCPMTables() {
 
 migrateCCPMTables();
 
+// Auto-migrate: Create parsed_documents table if not exists
+function migrateDocumentsTables() {
+  try {
+    const tableExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='parsed_documents'"
+    ).get();
+
+    if (!tableExists) {
+      console.log("Migrating: Creating parsed_documents table...");
+      db.exec(`
+        CREATE TABLE parsed_documents (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          doc_id TEXT UNIQUE NOT NULL,
+          project_id TEXT NOT NULL,
+          doc_type TEXT NOT NULL,
+          doc_path TEXT NOT NULL,
+          doc_hash TEXT NOT NULL,
+          parsed_structure TEXT NOT NULL,
+          wbs_mappings TEXT,
+          parsed_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (project_id) REFERENCES projects(project_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_parsed_documents_project_id ON parsed_documents(project_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_parsed_documents_doc_hash ON parsed_documents(doc_hash)");
+      console.log("Parsed documents table created.");
+    }
+
+    // Create milestones table
+    const milestonesExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='milestones'"
+    ).get();
+
+    if (!milestonesExists) {
+      console.log("Migrating: Creating milestones table...");
+      db.exec(`
+        CREATE TABLE milestones (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          milestone_id TEXT UNIQUE NOT NULL,
+          project_id TEXT NOT NULL,
+          wbs_id TEXT,
+          title TEXT NOT NULL,
+          description TEXT,
+          type TEXT DEFAULT 'checkpoint',
+          status TEXT DEFAULT 'pending',
+          target_date TEXT,
+          achieved_date TEXT,
+          evidence TEXT,
+          next_actions TEXT,
+          lessons_learned TEXT,
+          metadata TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (project_id) REFERENCES projects(project_id),
+          FOREIGN KEY (wbs_id) REFERENCES wbs_items(wbs_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_milestones_project_id ON milestones(project_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_milestones_status ON milestones(status)");
+      console.log("Milestones table created.");
+    }
+
+    // Create semantic_records table
+    const semanticExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='semantic_records'"
+    ).get();
+
+    if (!semanticExists) {
+      console.log("Migrating: Creating semantic_records table...");
+      db.exec(`
+        CREATE TABLE semantic_records (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          record_id TEXT UNIQUE NOT NULL,
+          project_id TEXT NOT NULL,
+          milestone_id TEXT,
+          record_type TEXT NOT NULL,
+          title TEXT NOT NULL,
+          content TEXT NOT NULL,
+          tags TEXT,
+          relations TEXT,
+          source_session_id TEXT,
+          source_event_id TEXT,
+          metadata TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (project_id) REFERENCES projects(project_id),
+          FOREIGN KEY (milestone_id) REFERENCES milestones(milestone_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_semantic_records_project_id ON semantic_records(project_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_semantic_records_record_type ON semantic_records(record_type)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_semantic_records_milestone_id ON semantic_records(milestone_id)");
+      console.log("Semantic records table created.");
+    }
+  } catch (error) {
+    console.error("Documents migration error:", error);
+  }
+}
+
+migrateDocumentsTables();
+
 export function getDb() {
   return db;
 }

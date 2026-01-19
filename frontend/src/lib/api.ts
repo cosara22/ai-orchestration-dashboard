@@ -510,6 +510,172 @@ export const api = {
     fetchApi<{ success: boolean; history_id: string }>(`/api/ccpm/projects/${projectId}/record-buffer`, {
       method: "POST",
     }),
+
+  // Document Parser API
+  parseDocument: (projectId: string, docPath: string) =>
+    fetchApi<ParseResult>("/api/docs/parse", {
+      method: "POST",
+      body: JSON.stringify({ project_id: projectId, doc_path: docPath }),
+    }),
+
+  getDocuments: (projectId: string) =>
+    fetchApi<{ documents: ParsedDocument[] }>(`/api/docs/project/${projectId}`),
+
+  getWBSPreview: (docId: string) =>
+    fetchApi<{ doc_id: string; doc_type: string; wbs_items: WBSSuggestion[] }>(`/api/docs/${docId}/wbs-preview`),
+
+  applyWBS: (docId: string, selectedItems?: string[]) =>
+    fetchApi<{ success: boolean; created_count: number; created_wbs: Array<{ wbs_id: string; code: string; title: string }> }>(
+      `/api/docs/${docId}/apply`,
+      {
+        method: "POST",
+        body: JSON.stringify({ selected_items: selectedItems }),
+      }
+    ),
+
+  scanDocuments: (projectId: string, directory: string) =>
+    fetchApi<{ directory: string; found: number; documents: Array<{ path: string; type: string; title: string }> }>(
+      "/api/docs/scan",
+      {
+        method: "POST",
+        body: JSON.stringify({ project_id: projectId, directory }),
+      }
+    ),
+
+  // Milestones API
+  getMilestones: (params?: { project_id?: string; status?: string; type?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.type) searchParams.set("type", params.type);
+    const query = searchParams.toString();
+    return fetchApi<{ milestones: Milestone[] }>(`/api/milestones${query ? `?${query}` : ""}`);
+  },
+
+  createMilestone: (milestone: {
+    project_id: string;
+    title: string;
+    description?: string;
+    type?: string;
+    target_date?: string;
+    wbs_id?: string;
+  }) =>
+    fetchApi<Milestone>("/api/milestones", {
+      method: "POST",
+      body: JSON.stringify(milestone),
+    }),
+
+  getMilestone: (id: string) => fetchApi<Milestone & { semantic_records: SemanticRecord[] }>(`/api/milestones/${id}`),
+
+  updateMilestone: (id: string, updates: Partial<Milestone>) =>
+    fetchApi<Milestone>(`/api/milestones/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }),
+
+  achieveMilestone: (id: string, data: { evidence?: MilestoneEvidence; lessons_learned?: string; next_actions?: NextAction[] }) =>
+    fetchApi<{ milestone: Milestone; report: string }>(`/api/milestones/${id}/achieve`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getMilestoneReport: async (id: string, format: "md" | "json" = "md"): Promise<string> => {
+    const apiKey = getApiKey();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (apiKey) {
+      headers["X-API-Key"] = apiKey;
+    }
+    const response = await fetch(`${API_BASE}/api/milestones/${id}/report?format=${format}`, { headers });
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+    if (format === "md") {
+      return response.text();
+    }
+    return response.json();
+  },
+
+  deleteMilestone: (id: string) =>
+    fetchApi<{ success: boolean }>(`/api/milestones/${id}`, { method: "DELETE" }),
+
+  // Semantic Records API
+  getSemanticRecords: (params?: { project_id?: string; record_type?: string; tags?: string; search?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.record_type) searchParams.set("record_type", params.record_type);
+    if (params?.tags) searchParams.set("tags", params.tags);
+    if (params?.search) searchParams.set("search", params.search);
+    const query = searchParams.toString();
+    return fetchApi<{ records: SemanticRecord[] }>(`/api/milestones/semantic/list${query ? `?${query}` : ""}`);
+  },
+
+  createSemanticRecord: (record: {
+    project_id: string;
+    record_type: string;
+    title: string;
+    content: string;
+    milestone_id?: string;
+    tags?: string[];
+    source_session_id?: string;
+  }) =>
+    fetchApi<SemanticRecord>("/api/milestones/semantic", {
+      method: "POST",
+      body: JSON.stringify(record),
+    }),
+
+  deleteSemanticRecord: (id: string) =>
+    fetchApi<{ success: boolean }>(`/api/milestones/semantic/${id}`, { method: "DELETE" }),
+
+  // Agent Integration API
+  getAgentContext: (projectId: string) =>
+    fetchApi<{
+      project_id: string;
+      recent_milestones: Array<{ id: string; title: string; type: string; status: string; achieved_date: string | null }>;
+      pending_actions: Array<{ id: string; title: string; priority: string; milestone_id: string; milestone_title: string }>;
+      recent_progress: Array<{ id: string; type: string; title: string; created_at: string }>;
+      active_wbs_items: WBSItem[];
+      summary: { total_milestones: number; achieved: number; pending_actions_count: number; active_wbs_count: number };
+    }>(`/api/milestones/agent/context/${projectId}`),
+
+  recordAgentMilestone: (data: {
+    session_id?: string;
+    project_id: string;
+    event_type: "session_end" | "commit" | "task_complete" | "phase_complete";
+    title: string;
+    description?: string;
+    summary?: string;
+    files_changed?: string[];
+    commits?: string[];
+    tools_used?: string[];
+    duration_minutes?: number;
+    outcome?: "success" | "partial" | "blocked";
+    next_steps?: string[];
+    lessons_learned?: string;
+    tags?: string[];
+    wbs_id?: string;
+  }) =>
+    fetchApi<{ milestone_id: string; record_id: string; status: string; report: string }>(
+      "/api/milestones/agent/record",
+      { method: "POST", body: JSON.stringify(data) }
+    ),
+
+  recordAgentProgress: (data: {
+    session_id?: string;
+    project_id: string;
+    wbs_id?: string;
+    progress_type: "task_start" | "task_progress" | "task_complete" | "blocker";
+    task_title?: string;
+    details?: string;
+    percent_complete?: number;
+    blockers?: string[];
+    tools_used?: string[];
+  }) =>
+    fetchApi<{ record_id: string; progress_type: string; percent_complete?: number; has_blockers: boolean }>(
+      "/api/milestones/agent/progress",
+      { method: "POST", body: JSON.stringify(data) }
+    ),
 };
 
 // CCPM/WBS Types
@@ -588,4 +754,88 @@ export interface BufferHistoryEntry {
   consumed_percent: number;
   progress_percent: number;
   recorded_at: string;
+}
+
+// Document Parser Types
+export interface WBSSuggestion {
+  code: string;
+  title: string;
+  type: "phase" | "milestone" | "task" | "subtask";
+  description: string;
+  estimated_duration?: number;
+  parent_code?: string;
+  source_doc: string;
+  source_section: string;
+}
+
+export interface ParsedDocument {
+  doc_id: string;
+  doc_type: "PRJ" | "REQ" | "DES" | "UNKNOWN";
+  doc_path: string;
+  doc_hash: string;
+  has_mappings: boolean;
+  parsed_at: string;
+}
+
+export interface ParseResult {
+  doc_id: string;
+  doc_type: string;
+  title: string;
+  doc_hash: string;
+  is_update: boolean;
+  extraction_summary: {
+    type: string;
+    item_count: number;
+  };
+  suggested_wbs: WBSSuggestion[];
+}
+
+// Milestone Types
+export interface Milestone {
+  milestone_id: string;
+  project_id: string;
+  wbs_id: string | null;
+  title: string;
+  description: string | null;
+  type: "checkpoint" | "release" | "review" | "decision";
+  status: "pending" | "achieved" | "missed" | "deferred";
+  target_date: string | null;
+  achieved_date: string | null;
+  evidence: MilestoneEvidence | null;
+  next_actions: NextAction[] | null;
+  lessons_learned: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MilestoneEvidence {
+  commits?: string[];
+  sessions?: string[];
+  files_changed?: string[];
+  test_results?: Record<string, unknown>;
+}
+
+export interface NextAction {
+  action: string;
+  priority: "high" | "medium" | "low";
+  assignee?: string;
+  due_date?: string;
+  context?: string;
+}
+
+export interface SemanticRecord {
+  record_id: string;
+  project_id: string;
+  milestone_id: string | null;
+  record_type: "decision" | "insight" | "problem" | "solution" | "context" | "achievement";
+  title: string;
+  content: string;
+  tags: string[] | null;
+  relations: string[] | null;
+  source_session_id: string | null;
+  source_event_id: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
 }

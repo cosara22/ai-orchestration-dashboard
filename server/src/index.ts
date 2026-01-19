@@ -10,6 +10,8 @@ import { agentsRouter } from "./routes/agents";
 import { searchRouter } from "./routes/search";
 import { alertsRouter } from "./routes/alerts";
 import ccpmRouter from "./routes/ccpm";
+import docsRouter from "./routes/docs";
+import milestonesRouter from "./routes/milestones";
 import { wsHandler } from "./ws/handler";
 import { authMiddleware, isAuthEnabled } from "./middleware/auth";
 
@@ -48,6 +50,8 @@ app.route("/api/agents", agentsRouter);
 app.route("/api/search", searchRouter);
 app.route("/api/alerts", alertsRouter);
 app.route("/api/ccpm", ccpmRouter);
+app.route("/api/docs", docsRouter);
+app.route("/api/milestones", milestonesRouter);
 
 // WebSocket upgrade is handled at Bun.serve level
 
