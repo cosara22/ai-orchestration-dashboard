@@ -101,3 +101,8 @@ export function broadcastToClients(message: any, channel: string = "all") {
 export function getClientCount(): number {
   return clients.size;
 }
+
+// Alias for broadcastToClients with channel-first signature
+export function broadcastToChannel(channel: string, message: any) {
+  broadcastToClients(message, channel);
+}

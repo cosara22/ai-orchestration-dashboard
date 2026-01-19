@@ -157,6 +157,58 @@ teamsRouter.post("/", async (c) => {
   }
 });
 
+// GET /api/teams/overview/all - Get overview of all teams with stats
+// NOTE: This route MUST be defined BEFORE /:id to avoid conflict
+teamsRouter.get("/overview/all", async (c) => {
+  const db = getDb();
+
+  try {
+    const teams: any[] = db.prepare(`
+      SELECT
+        t.*,
+        (SELECT COUNT(*) FROM team_members tm WHERE tm.team_id = t.team_id) as member_count,
+        (SELECT name FROM agents WHERE agent_id = t.lead_agent_id) as lead_name,
+        (SELECT COUNT(*) FROM task_queue tq
+         WHERE tq.project_id = t.project_id
+         AND tq.assigned_to IN (SELECT agent_id FROM team_members WHERE team_id = t.team_id)
+         AND tq.status = 'completed') as completed_tasks,
+        (SELECT COUNT(*) FROM task_queue tq
+         WHERE tq.project_id = t.project_id
+         AND tq.assigned_to IN (SELECT agent_id FROM team_members WHERE team_id = t.team_id)
+         AND tq.status = 'in_progress') as in_progress_tasks,
+        (SELECT name FROM projects WHERE project_id = t.project_id) as project_name
+      FROM teams t
+      WHERE t.status = 'active'
+      ORDER BY t.created_at DESC
+    `).all();
+
+    // Get overall stats
+    const totalAgents: any = db.prepare(
+      "SELECT COUNT(*) as count FROM agents WHERE status = 'active'"
+    ).get();
+
+    const assignedAgents: any = db.prepare(
+      "SELECT COUNT(DISTINCT agent_id) as count FROM team_members"
+    ).get();
+
+    return c.json({
+      teams: teams.map(t => ({
+        ...t,
+        metadata: t.metadata ? JSON.parse(t.metadata) : null,
+      })),
+      summary: {
+        total_teams: teams.length,
+        total_agents: totalAgents?.count || 0,
+        assigned_agents: assignedAgents?.count || 0,
+        unassigned_agents: (totalAgents?.count || 0) - (assignedAgents?.count || 0),
+      },
+    });
+  } catch (error) {
+    console.error("Failed to get teams overview:", error);
+    return c.json({ error: "Failed to get teams overview" }, 500);
+  }
+});
+
 // GET /api/teams/:id - Get team details with members
 teamsRouter.get("/:id", async (c) => {
   const db = getDb();
@@ -527,57 +579,6 @@ teamsRouter.get("/:id/members", async (c) => {
   } catch (error) {
     console.error("Failed to list members:", error);
     return c.json({ error: "Failed to list members" }, 500);
-  }
-});
-
-// GET /api/teams/overview - Get overview of all teams with stats
-teamsRouter.get("/overview/all", async (c) => {
-  const db = getDb();
-
-  try {
-    const teams: any[] = db.prepare(`
-      SELECT
-        t.*,
-        (SELECT COUNT(*) FROM team_members tm WHERE tm.team_id = t.team_id) as member_count,
-        (SELECT name FROM agents WHERE agent_id = t.lead_agent_id) as lead_name,
-        (SELECT COUNT(*) FROM task_queue tq
-         WHERE tq.project_id = t.project_id
-         AND tq.assigned_to IN (SELECT agent_id FROM team_members WHERE team_id = t.team_id)
-         AND tq.status = 'completed') as completed_tasks,
-        (SELECT COUNT(*) FROM task_queue tq
-         WHERE tq.project_id = t.project_id
-         AND tq.assigned_to IN (SELECT agent_id FROM team_members WHERE team_id = t.team_id)
-         AND tq.status = 'in_progress') as in_progress_tasks,
-        (SELECT name FROM projects WHERE project_id = t.project_id) as project_name
-      FROM teams t
-      WHERE t.status = 'active'
-      ORDER BY t.created_at DESC
-    `).all();
-
-    // Get overall stats
-    const totalAgents: any = db.prepare(
-      "SELECT COUNT(*) as count FROM agents WHERE status = 'active'"
-    ).get();
-
-    const assignedAgents: any = db.prepare(
-      "SELECT COUNT(DISTINCT agent_id) as count FROM team_members"
-    ).get();
-
-    return c.json({
-      teams: teams.map(t => ({
-        ...t,
-        metadata: t.metadata ? JSON.parse(t.metadata) : null,
-      })),
-      summary: {
-        total_teams: teams.length,
-        total_agents: totalAgents?.count || 0,
-        assigned_agents: assignedAgents?.count || 0,
-        unassigned_agents: (totalAgents?.count || 0) - (assignedAgents?.count || 0),
-      },
-    });
-  } catch (error) {
-    console.error("Failed to get teams overview:", error);
-    return c.json({ error: "Failed to get teams overview" }, 500);
   }
 });
 

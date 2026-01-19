@@ -18,8 +18,6 @@ interface AgentStatus {
 interface BlockedTask {
   task_id: string;
   title: string;
-  blocked_by: string;
-  blocked_reason: string;
   assigned_to: string | null;
   agent_name: string | null;
 }
@@ -91,8 +89,8 @@ conductorRouter.get("/status/:project_id", async (c) => {
     const activeAgents: any[] = db.prepare(`
       SELECT
         a.agent_id, a.name, a.status, a.last_heartbeat,
-        COUNT(t.task_id) as current_workload,
-        (SELECT task_id FROM task_queue WHERE assigned_to = a.agent_id AND status = 'in_progress' LIMIT 1) as current_task_id,
+        COUNT(t.id) as current_workload,
+        (SELECT id FROM task_queue WHERE assigned_to = a.agent_id AND status = 'in_progress' LIMIT 1) as current_task_id,
         (SELECT title FROM task_queue WHERE assigned_to = a.agent_id AND status = 'in_progress' LIMIT 1) as current_task_title
       FROM agents a
       LEFT JOIN task_queue t ON t.assigned_to = a.agent_id AND t.status IN ('queued', 'in_progress')
@@ -102,7 +100,7 @@ conductorRouter.get("/status/:project_id", async (c) => {
 
     // Get blocked tasks
     const blockedTasks: any[] = db.prepare(`
-      SELECT t.task_id, t.title, t.blocked_by, t.blocked_reason, t.assigned_to, a.name as agent_name
+      SELECT t.id as task_id, t.title, t.assigned_to, a.name as agent_name
       FROM task_queue t
       LEFT JOIN agents a ON t.assigned_to = a.agent_id
       WHERE t.project_id = ? AND t.status = 'blocked'
@@ -187,7 +185,7 @@ conductorRouter.get("/overview", async (c) => {
         COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks,
         COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
         COUNT(CASE WHEN t.status = 'blocked' THEN 1 END) as blocked_tasks,
-        COUNT(t.task_id) as total_tasks
+        COUNT(t.id) as total_tasks
       FROM projects p
       LEFT JOIN task_queue t ON t.project_id = p.project_id
       LEFT JOIN agents a ON a.status = 'active'
@@ -251,10 +249,10 @@ conductorRouter.post("/decompose", async (c) => {
 
       db.prepare(`
         INSERT INTO task_queue (
-          task_id, project_id, title, description, priority, status,
-          estimated_minutes, required_capabilities, dependencies, parent_task_id,
+          id, project_id, title, description, priority, status,
+          estimated_minutes, required_capabilities, dependencies,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, datetime('now'), datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, datetime('now'), datetime('now'))
       `).run(
         taskId,
         project_id,
@@ -263,8 +261,7 @@ conductorRouter.post("/decompose", async (c) => {
         subtask.priority || 1,
         subtask.estimated_minutes || null,
         JSON.stringify(subtask.required_capabilities || []),
-        JSON.stringify(subtask.dependencies || []),
-        parent_task_id || null
+        JSON.stringify(subtask.dependencies || [])
       );
 
       createdTasks.push({
@@ -322,7 +319,7 @@ conductorRouter.post("/reallocate", async (c) => {
 
     for (const taskId of task_ids) {
       const task: any = db.prepare(
-        "SELECT * FROM task_queue WHERE task_id = ?"
+        "SELECT * FROM task_queue WHERE id = ?"
       ).get(taskId);
 
       if (!task) continue;
@@ -332,7 +329,7 @@ conductorRouter.post("/reallocate", async (c) => {
         db.prepare(`
           UPDATE task_queue
           SET assigned_to = ?, status = 'queued', updated_at = datetime('now')
-          WHERE task_id = ?
+          WHERE id = ?
         `).run(to_agent_id, taskId);
         reallocated.push(taskId);
       }
@@ -642,7 +639,7 @@ function detectBottlenecks(
 
   // Check for capability gaps
   const unassignableTasks: any[] = db.prepare(`
-    SELECT task_id, title, required_capabilities
+    SELECT id, title, required_capabilities
     FROM task_queue
     WHERE project_id = ? AND status = 'pending' AND assigned_to IS NULL
     AND required_capabilities != '[]'
@@ -654,7 +651,7 @@ function detectBottlenecks(
       type: "capability_gap",
       severity: unassignableTasks.length > 5 ? "high" : "medium",
       description: `${unassignableTasks.length} tasks cannot be assigned due to capability requirements`,
-      affected_items: unassignableTasks.map(t => t.task_id),
+      affected_items: unassignableTasks.map(t => t.id),
       suggested_action: "Register additional capabilities for agents or adjust task requirements",
     });
   }
