@@ -431,67 +431,87 @@ migrateDocumentsTables();
 // Auto-migrate: Create multi-agent orchestration tables (Phase 15)
 function migrateMultiAgentTables() {
   try {
-    // Task Queue table
+    // Task Queue table - check and recreate if schema mismatch
     const taskQueueExists = db.query(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='task_queue'"
     ).get();
 
-    if (!taskQueueExists) {
+    // Check if table has correct schema (should have 'title' column)
+    let needsRecreate = false;
+    if (taskQueueExists) {
+      const tableInfo = db.query("PRAGMA table_info(task_queue)").all() as Array<{ name: string }>;
+      const columnNames = tableInfo.map((col) => col.name);
+      if (!columnNames.includes("title")) {
+        console.log("Migrating: Recreating task_queue table with correct schema...");
+        db.exec("DROP TABLE task_queue");
+        needsRecreate = true;
+      }
+    }
+
+    if (!taskQueueExists || needsRecreate) {
       console.log("Migrating: Creating task_queue table...");
       db.exec(`
         CREATE TABLE task_queue (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          queue_id TEXT UNIQUE NOT NULL,
+          id TEXT PRIMARY KEY NOT NULL,
           project_id TEXT NOT NULL,
-          task_id TEXT NOT NULL,
-          priority INTEGER DEFAULT 1,
-          required_capabilities TEXT,
-          assigned_agent_id TEXT,
+          title TEXT NOT NULL,
+          description TEXT,
+          required_capabilities TEXT DEFAULT '[]',
+          priority INTEGER DEFAULT 2,
           status TEXT DEFAULT 'pending',
-          enqueued_at TEXT DEFAULT (datetime('now')),
+          estimated_minutes INTEGER,
+          actual_minutes INTEGER,
+          dependencies TEXT DEFAULT '[]',
+          assigned_to TEXT,
           assigned_at TEXT,
           started_at TEXT,
           completed_at TEXT,
-          timeout_minutes INTEGER DEFAULT 60,
+          error_message TEXT,
           retry_count INTEGER DEFAULT 0,
-          max_retries INTEGER DEFAULT 3,
           metadata TEXT,
-          FOREIGN KEY (project_id) REFERENCES projects(project_id),
-          FOREIGN KEY (task_id) REFERENCES tasks(task_id),
-          FOREIGN KEY (assigned_agent_id) REFERENCES agents(agent_id)
+          result TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (assigned_to) REFERENCES agents(agent_id)
         )
       `);
       db.exec("CREATE INDEX IF NOT EXISTS idx_task_queue_status ON task_queue(status)");
-      db.exec("CREATE INDEX IF NOT EXISTS idx_task_queue_priority ON task_queue(priority, enqueued_at)");
-      db.exec("CREATE INDEX IF NOT EXISTS idx_task_queue_agent ON task_queue(assigned_agent_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_task_queue_priority ON task_queue(priority, created_at)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_task_queue_assigned ON task_queue(assigned_to)");
       db.exec("CREATE INDEX IF NOT EXISTS idx_task_queue_project ON task_queue(project_id)");
       console.log("Task queue table created.");
     }
 
-    // Agent Capabilities table
+    // Agent Capabilities table - check and recreate if schema mismatch
     const capabilitiesExists = db.query(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_capabilities'"
     ).get();
 
-    if (!capabilitiesExists) {
+    let needsCapRecreate = false;
+    if (capabilitiesExists) {
+      const tableInfo = db.query("PRAGMA table_info(agent_capabilities)").all() as Array<{ name: string }>;
+      const columnNames = tableInfo.map((col) => col.name);
+      if (!columnNames.includes("tag")) {
+        console.log("Migrating: Recreating agent_capabilities table with correct schema...");
+        db.exec("DROP TABLE agent_capabilities");
+        needsCapRecreate = true;
+      }
+    }
+
+    if (!capabilitiesExists || needsCapRecreate) {
       console.log("Migrating: Creating agent_capabilities table...");
       db.exec(`
         CREATE TABLE agent_capabilities (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          capability_id TEXT UNIQUE NOT NULL,
           agent_id TEXT NOT NULL,
-          capability TEXT NOT NULL,
-          proficiency INTEGER DEFAULT 3,
-          verified INTEGER DEFAULT 0,
-          last_used TEXT,
-          success_rate REAL DEFAULT 0.0,
-          tasks_completed INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT (datetime('now')),
+          tag TEXT NOT NULL,
+          proficiency INTEGER DEFAULT 50,
+          updated_at TEXT DEFAULT (datetime('now')),
+          PRIMARY KEY (agent_id, tag),
           FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
         )
       `);
       db.exec("CREATE INDEX IF NOT EXISTS idx_agent_capabilities_agent ON agent_capabilities(agent_id)");
-      db.exec("CREATE INDEX IF NOT EXISTS idx_agent_capabilities_capability ON agent_capabilities(capability)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_agent_capabilities_tag ON agent_capabilities(tag)");
       console.log("Agent capabilities table created.");
     }
 
