@@ -19,6 +19,7 @@ import { conductorRouter } from "./routes/conductor";
 import { teamsRouter } from "./routes/teams";
 import { wsHandler } from "./ws/handler";
 import { authMiddleware, isAuthEnabled } from "./middleware/auth";
+import { startSchedulers, stopSchedulers, getSchedulerStatus } from "./schedulers";
 
 const app = new Hono();
 
@@ -39,6 +40,7 @@ app.get("/health", (c) => {
     timestamp: new Date().toISOString(),
     version: "1.0.0",
     auth_enabled: isAuthEnabled(),
+    schedulers: getSchedulerStatus(),
   });
 });
 
@@ -103,5 +105,24 @@ const server = Bun.serve({
 });
 
 console.log(`AOD API Gateway running at http://localhost:${server.port}`);
+
+// Start schedulers (Phase 15-G: Automation)
+const ENABLE_SCHEDULERS = process.env.ENABLE_SCHEDULERS !== "false";
+if (ENABLE_SCHEDULERS) {
+  startSchedulers();
+}
+
+// Graceful shutdown
+process.on("SIGINT", () => {
+  console.log("\nShutting down...");
+  stopSchedulers();
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  console.log("\nShutting down...");
+  stopSchedulers();
+  process.exit(0);
+});
 
 export default app;
