@@ -19,7 +19,8 @@ import { DashboardCustomizer, PanelConfig, loadPanelConfig } from "@/components/
 import { CCPMPanel } from "@/components/CCPMPanel";
 import { FeverChart } from "@/components/FeverChart";
 import { TaskQueuePanel } from "@/components/TaskQueuePanel";
-import { Activity, RefreshCw, AlertTriangle, X, Settings, Search, LayoutGrid } from "lucide-react";
+import MultiAgentView from "@/components/MultiAgentView";
+import { Activity, RefreshCw, AlertTriangle, X, Settings, Search, LayoutGrid, Users } from "lucide-react";
 import { CCPMProject } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const [agentCounts, setAgentCounts] = useState<AgentCounts>({ active: 0, idle: 0, error: 0, total: 0 });
   const [panelConfig, setPanelConfig] = useState<PanelConfig[]>([]);
   const [selectedCCPMProject, setSelectedCCPMProject] = useState<CCPMProject | null>(null);
+  const [activeView, setActiveView] = useState<"dashboard" | "multiagent">("dashboard");
 
   // Load panel config on mount
   useEffect(() => {
@@ -185,6 +187,30 @@ export default function DashboardPage() {
               <h1 className="text-xl font-bold text-theme-primary">
                 AI Orchestration Dashboard
               </h1>
+              {/* View Toggle */}
+              <div className="flex ml-4 bg-theme-primary rounded-lg p-1">
+                <button
+                  onClick={() => setActiveView("dashboard")}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    activeView === "dashboard"
+                      ? "bg-blue-500 text-white"
+                      : "text-theme-secondary hover:text-theme-primary"
+                  }`}
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => setActiveView("multiagent")}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    activeView === "multiagent"
+                      ? "bg-indigo-500 text-white"
+                      : "text-theme-secondary hover:text-theme-primary"
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  Multi-Agent
+                </button>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <button
@@ -241,6 +267,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-center py-20">
             <RefreshCw className="h-8 w-8 animate-spin text-blue-400" />
           </div>
+        ) : activeView === "multiagent" ? (
+          /* Multi-Agent View */
+          <MultiAgentView projectId={selectedProject || undefined} />
         ) : (
           <div className="space-y-6">
             {/* Metrics Grid */}
