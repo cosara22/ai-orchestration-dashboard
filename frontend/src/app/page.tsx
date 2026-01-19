@@ -16,7 +16,10 @@ import { ExportButton } from "@/components/ExportButton";
 import { SettingsModal } from "@/components/SettingsModal";
 import { SearchModal } from "@/components/SearchModal";
 import { DashboardCustomizer, PanelConfig, loadPanelConfig } from "@/components/DashboardCustomizer";
+import { CCPMPanel } from "@/components/CCPMPanel";
+import { FeverChart } from "@/components/FeverChart";
 import { Activity, RefreshCw, AlertTriangle, X, Settings, Search, LayoutGrid } from "lucide-react";
+import { CCPMProject } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4000/ws";
@@ -38,6 +41,7 @@ export default function DashboardPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentCounts, setAgentCounts] = useState<AgentCounts>({ active: 0, idle: 0, error: 0, total: 0 });
   const [panelConfig, setPanelConfig] = useState<PanelConfig[]>([]);
+  const [selectedCCPMProject, setSelectedCCPMProject] = useState<CCPMProject | null>(null);
 
   // Load panel config on mount
   useEffect(() => {
@@ -335,6 +339,19 @@ export default function DashboardPage() {
               {/* Alerts Panel */}
               {isPanelVisible("alerts") && <AlertPanel />}
             </div>
+
+            {/* CCPM Panel */}
+            {isPanelVisible("ccpm") && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <CCPMPanel onSelectProject={setSelectedCCPMProject} />
+                {selectedCCPMProject && (
+                  <FeverChart
+                    projectId={selectedCCPMProject.project_id}
+                    onRefresh={() => {}}
+                  />
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>

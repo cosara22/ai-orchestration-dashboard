@@ -401,4 +401,191 @@ export const api = {
     fetchApi<{ success: boolean; resolved_at: string }>(`/api/alerts/history/${historyId}/resolve`, {
       method: "PATCH",
     }),
+
+  // CCPM/WBS
+  getCCPMProjects: (params?: { status?: string; limit?: number; offset?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
+    const query = searchParams.toString();
+    return fetchApi<{ projects: CCPMProject[]; total: number; limit: number; offset: number }>(
+      `/api/ccpm/projects${query ? `?${query}` : ""}`
+    );
+  },
+
+  getCCPMProject: (id: string) => fetchApi<CCPMProject & { stats: WBSStats; progress: number }>(`/api/ccpm/projects/${id}`),
+
+  createCCPMProject: (project: {
+    name: string;
+    description?: string;
+    planned_start?: string;
+    planned_end?: string;
+    project_buffer_ratio?: number;
+    feeding_buffer_ratio?: number;
+  }) =>
+    fetchApi<CCPMProject>("/api/ccpm/projects", {
+      method: "POST",
+      body: JSON.stringify(project),
+    }),
+
+  updateCCPMProject: (id: string, updates: Partial<CCPMProject>) =>
+    fetchApi<CCPMProject>(`/api/ccpm/projects/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }),
+
+  deleteCCPMProject: (id: string) =>
+    fetchApi<{ success: boolean }>(`/api/ccpm/projects/${id}`, {
+      method: "DELETE",
+    }),
+
+  getWBS: (projectId: string, flat?: boolean) =>
+    fetchApi<{ items: WBSItem[] }>(`/api/ccpm/projects/${projectId}/wbs${flat ? "?flat=true" : ""}`),
+
+  createWBSItem: (projectId: string, item: {
+    title: string;
+    parent_id?: string;
+    type?: string;
+    estimated_duration?: number;
+    aggressive_duration?: number;
+    safe_duration?: number;
+    planned_start?: string;
+    planned_end?: string;
+    assignee?: string;
+  }) =>
+    fetchApi<WBSItem>(`/api/ccpm/projects/${projectId}/wbs`, {
+      method: "POST",
+      body: JSON.stringify(item),
+    }),
+
+  updateWBSItem: (id: string, updates: Partial<WBSItem>) =>
+    fetchApi<WBSItem>(`/api/ccpm/wbs/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }),
+
+  deleteWBSItem: (id: string) =>
+    fetchApi<{ success: boolean }>(`/api/ccpm/wbs/${id}`, {
+      method: "DELETE",
+    }),
+
+  moveWBSItem: (id: string, data: { new_parent_id?: string | null; new_sort_order?: number }) =>
+    fetchApi<WBSItem>(`/api/ccpm/wbs/${id}/move`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getDependencies: (projectId: string) =>
+    fetchApi<{ dependencies: WBSDependency[] }>(`/api/ccpm/projects/${projectId}/dependencies`),
+
+  createDependency: (projectId: string, dep: { predecessor_id: string; successor_id: string; type?: string; lag?: number }) =>
+    fetchApi<WBSDependency>(`/api/ccpm/projects/${projectId}/dependencies`, {
+      method: "POST",
+      body: JSON.stringify(dep),
+    }),
+
+  deleteDependency: (id: string) =>
+    fetchApi<{ success: boolean }>(`/api/ccpm/dependencies/${id}`, {
+      method: "DELETE",
+    }),
+
+  getCriticalChain: (projectId: string) =>
+    fetchApi<{ critical_chain: string[]; critical_items: WBSItem[]; total_duration: number; all_items: number }>(
+      `/api/ccpm/projects/${projectId}/critical-chain`
+    ),
+
+  getBuffers: (projectId: string) =>
+    fetchApi<{
+      project_buffer: { size: number; consumed: number; consumed_percent: number; remaining: number };
+      progress: { completed_duration: number; total_duration: number; percent: number };
+      fever_status: "green" | "yellow" | "red";
+      estimates: { safe_total: number; aggressive_total: number; actual_total: number };
+    }>(`/api/ccpm/projects/${projectId}/buffers`),
+
+  getBufferTrend: (projectId: string, days?: number) =>
+    fetchApi<{ history: BufferHistoryEntry[] }>(`/api/ccpm/projects/${projectId}/buffer-trend${days ? `?days=${days}` : ""}`),
+
+  recordBuffer: (projectId: string) =>
+    fetchApi<{ success: boolean; history_id: string }>(`/api/ccpm/projects/${projectId}/record-buffer`, {
+      method: "POST",
+    }),
 };
+
+// CCPM/WBS Types
+export interface CCPMProject {
+  project_id: string;
+  name: string;
+  description: string | null;
+  status: "planning" | "active" | "completed" | "on_hold";
+  project_buffer_ratio: number;
+  feeding_buffer_ratio: number;
+  planned_start: string | null;
+  planned_end: string | null;
+  actual_start: string | null;
+  actual_end: string | null;
+  project_buffer_days: number | null;
+  project_buffer_consumed: number;
+  auto_track_sessions: number;
+  metadata: Record<string, unknown> | null;
+  wbs_count?: number;
+  completed_count?: number;
+  progress?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WBSItem {
+  wbs_id: string;
+  project_id: string;
+  parent_id: string | null;
+  code: string;
+  title: string;
+  description: string | null;
+  type: "phase" | "milestone" | "task" | "subtask";
+  status: "pending" | "in_progress" | "completed" | "blocked";
+  estimated_duration: number | null;
+  aggressive_duration: number | null;
+  safe_duration: number | null;
+  actual_duration: number | null;
+  planned_start: string | null;
+  planned_end: string | null;
+  actual_start: string | null;
+  actual_end: string | null;
+  assignee: string | null;
+  linked_task_id: string | null;
+  linked_session_id: string | null;
+  auto_created: number;
+  sort_order: number;
+  metadata: Record<string, unknown> | null;
+  children?: WBSItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WBSDependency {
+  dependency_id: string;
+  predecessor_id: string;
+  successor_id: string;
+  type: "FS" | "FF" | "SS" | "SF";
+  lag: number;
+  created_at: string;
+}
+
+export interface WBSStats {
+  total: number;
+  completed: number;
+  in_progress: number;
+  blocked: number;
+  pending: number;
+  total_estimated: number;
+  total_actual: number;
+}
+
+export interface BufferHistoryEntry {
+  history_id: string;
+  buffer_type: string;
+  consumed_percent: number;
+  progress_percent: number;
+  recorded_at: string;
+}

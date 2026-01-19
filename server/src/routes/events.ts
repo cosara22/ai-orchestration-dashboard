@@ -5,6 +5,7 @@ import { getDb } from "../lib/db";
 import { publishEvent, CHANNELS } from "../lib/redis";
 import { broadcastToClients } from "../ws/handler";
 import { evaluateAlertsForEvent } from "../lib/alertEvaluator";
+import { processEventForWBS } from "../lib/wbsIntegration";
 
 export const eventsRouter = new Hono();
 
@@ -62,6 +63,17 @@ eventsRouter.post("/", async (c) => {
       session_id: validatedData.session_id,
       payload: validatedData.payload,
     }).catch((err) => console.error("Alert evaluation error:", err));
+
+    // Process event for WBS/CCPM integration (non-blocking)
+    try {
+      processEventForWBS(
+        validatedData.event_type,
+        validatedData.session_id || null,
+        validatedData.payload
+      );
+    } catch (err) {
+      console.error("WBS integration error:", err);
+    }
 
     return c.json({ success: true, event }, 201);
   } catch (error) {

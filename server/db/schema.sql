@@ -133,3 +133,123 @@ CREATE INDEX IF NOT EXISTS idx_alerts_enabled ON alerts(enabled);
 CREATE INDEX IF NOT EXISTS idx_alerts_type ON alerts(type);
 CREATE INDEX IF NOT EXISTS idx_alert_history_alert_id ON alert_history(alert_id);
 CREATE INDEX IF NOT EXISTS idx_alert_history_status ON alert_history(status);
+
+-- ============================================================
+-- CCPM/WBS Tables for Project Management
+-- ============================================================
+
+-- Projects table: CCPM project management
+CREATE TABLE IF NOT EXISTS projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    status TEXT DEFAULT 'active',      -- 'planning', 'active', 'completed', 'on_hold'
+
+    -- CCPM settings
+    project_buffer_ratio REAL DEFAULT 0.5,
+    feeding_buffer_ratio REAL DEFAULT 0.5,
+
+    -- Schedule
+    planned_start TEXT,
+    planned_end TEXT,
+    actual_start TEXT,
+    actual_end TEXT,
+
+    -- Buffer state
+    project_buffer_days INTEGER,
+    project_buffer_consumed REAL DEFAULT 0,
+
+    -- Claude Code integration
+    auto_track_sessions INTEGER DEFAULT 1,
+
+    metadata TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+
+-- WBS items table: Work Breakdown Structure
+CREATE TABLE IF NOT EXISTS wbs_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wbs_id TEXT UNIQUE NOT NULL,
+    project_id TEXT NOT NULL,
+    parent_id TEXT,                    -- Parent wbs_id (NULL = root)
+    code TEXT NOT NULL,                -- WBS code (e.g., "1.2.3")
+    title TEXT NOT NULL,
+    description TEXT,
+    type TEXT DEFAULT 'task',          -- 'phase', 'milestone', 'task', 'subtask'
+    status TEXT DEFAULT 'pending',     -- 'pending', 'in_progress', 'completed', 'blocked'
+
+    -- Estimates (in hours)
+    estimated_duration INTEGER,
+    aggressive_duration INTEGER,       -- 50% probability estimate
+    safe_duration INTEGER,             -- 90% probability estimate
+    actual_duration INTEGER,
+
+    -- Schedule
+    planned_start TEXT,
+    planned_end TEXT,
+    actual_start TEXT,
+    actual_end TEXT,
+
+    -- Assignment
+    assignee TEXT,
+
+    -- Claude Code integration
+    linked_task_id TEXT,
+    linked_session_id TEXT,
+    auto_created INTEGER DEFAULT 0,
+
+    -- Ordering
+    sort_order INTEGER DEFAULT 0,
+    metadata TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (project_id) REFERENCES projects(project_id),
+    FOREIGN KEY (parent_id) REFERENCES wbs_items(wbs_id),
+    FOREIGN KEY (linked_task_id) REFERENCES tasks(task_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_wbs_items_project_id ON wbs_items(project_id);
+CREATE INDEX IF NOT EXISTS idx_wbs_items_parent_id ON wbs_items(parent_id);
+CREATE INDEX IF NOT EXISTS idx_wbs_items_status ON wbs_items(status);
+CREATE INDEX IF NOT EXISTS idx_wbs_items_linked_task_id ON wbs_items(linked_task_id);
+CREATE INDEX IF NOT EXISTS idx_wbs_items_linked_session_id ON wbs_items(linked_session_id);
+
+-- WBS dependencies table: Task dependencies
+CREATE TABLE IF NOT EXISTS wbs_dependencies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dependency_id TEXT UNIQUE NOT NULL,
+    predecessor_id TEXT NOT NULL,
+    successor_id TEXT NOT NULL,
+    type TEXT DEFAULT 'FS',            -- 'FS', 'FF', 'SS', 'SF'
+    lag INTEGER DEFAULT 0,             -- Lag in hours
+    created_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (predecessor_id) REFERENCES wbs_items(wbs_id),
+    FOREIGN KEY (successor_id) REFERENCES wbs_items(wbs_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_wbs_dependencies_predecessor ON wbs_dependencies(predecessor_id);
+CREATE INDEX IF NOT EXISTS idx_wbs_dependencies_successor ON wbs_dependencies(successor_id);
+
+-- Buffer history table: CCPM buffer tracking
+CREATE TABLE IF NOT EXISTS buffer_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    history_id TEXT UNIQUE NOT NULL,
+    project_id TEXT NOT NULL,
+    buffer_type TEXT NOT NULL,         -- 'project', 'feeding'
+    wbs_id TEXT,                       -- For feeding buffer
+    consumed_percent REAL NOT NULL,
+    progress_percent REAL NOT NULL,
+    recorded_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (project_id) REFERENCES projects(project_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_buffer_history_project_id ON buffer_history(project_id);
+CREATE INDEX IF NOT EXISTS idx_buffer_history_recorded_at ON buffer_history(recorded_at);

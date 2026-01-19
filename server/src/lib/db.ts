@@ -188,6 +188,145 @@ function migrateAlertsTable() {
 
 migrateAlertsTable();
 
+// Auto-migrate: Create CCPM/WBS tables if not exists
+function migrateCCPMTables() {
+  try {
+    // Check if projects table exists
+    const projectsExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='projects'"
+    ).get();
+
+    if (!projectsExists) {
+      console.log("Migrating: Creating projects table...");
+      db.exec(`
+        CREATE TABLE projects (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT,
+          status TEXT DEFAULT 'active',
+          project_buffer_ratio REAL DEFAULT 0.5,
+          feeding_buffer_ratio REAL DEFAULT 0.5,
+          planned_start TEXT,
+          planned_end TEXT,
+          actual_start TEXT,
+          actual_end TEXT,
+          project_buffer_days INTEGER,
+          project_buffer_consumed REAL DEFAULT 0,
+          auto_track_sessions INTEGER DEFAULT 1,
+          metadata TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status)");
+      console.log("Projects table created.");
+    }
+
+    // Check if wbs_items table exists
+    const wbsExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='wbs_items'"
+    ).get();
+
+    if (!wbsExists) {
+      console.log("Migrating: Creating wbs_items table...");
+      db.exec(`
+        CREATE TABLE wbs_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          wbs_id TEXT UNIQUE NOT NULL,
+          project_id TEXT NOT NULL,
+          parent_id TEXT,
+          code TEXT NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          type TEXT DEFAULT 'task',
+          status TEXT DEFAULT 'pending',
+          estimated_duration INTEGER,
+          aggressive_duration INTEGER,
+          safe_duration INTEGER,
+          actual_duration INTEGER,
+          planned_start TEXT,
+          planned_end TEXT,
+          actual_start TEXT,
+          actual_end TEXT,
+          assignee TEXT,
+          linked_task_id TEXT,
+          linked_session_id TEXT,
+          auto_created INTEGER DEFAULT 0,
+          sort_order INTEGER DEFAULT 0,
+          metadata TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (project_id) REFERENCES projects(project_id),
+          FOREIGN KEY (parent_id) REFERENCES wbs_items(wbs_id),
+          FOREIGN KEY (linked_task_id) REFERENCES tasks(task_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_wbs_items_project_id ON wbs_items(project_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_wbs_items_parent_id ON wbs_items(parent_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_wbs_items_status ON wbs_items(status)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_wbs_items_linked_task_id ON wbs_items(linked_task_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_wbs_items_linked_session_id ON wbs_items(linked_session_id)");
+      console.log("WBS items table created.");
+    }
+
+    // Check if wbs_dependencies table exists
+    const depsExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='wbs_dependencies'"
+    ).get();
+
+    if (!depsExists) {
+      console.log("Migrating: Creating wbs_dependencies table...");
+      db.exec(`
+        CREATE TABLE wbs_dependencies (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          dependency_id TEXT UNIQUE NOT NULL,
+          predecessor_id TEXT NOT NULL,
+          successor_id TEXT NOT NULL,
+          type TEXT DEFAULT 'FS',
+          lag INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (predecessor_id) REFERENCES wbs_items(wbs_id),
+          FOREIGN KEY (successor_id) REFERENCES wbs_items(wbs_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_wbs_dependencies_predecessor ON wbs_dependencies(predecessor_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_wbs_dependencies_successor ON wbs_dependencies(successor_id)");
+      console.log("WBS dependencies table created.");
+    }
+
+    // Check if buffer_history table exists
+    const bufferExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='buffer_history'"
+    ).get();
+
+    if (!bufferExists) {
+      console.log("Migrating: Creating buffer_history table...");
+      db.exec(`
+        CREATE TABLE buffer_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          history_id TEXT UNIQUE NOT NULL,
+          project_id TEXT NOT NULL,
+          buffer_type TEXT NOT NULL,
+          wbs_id TEXT,
+          consumed_percent REAL NOT NULL,
+          progress_percent REAL NOT NULL,
+          recorded_at TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (project_id) REFERENCES projects(project_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_buffer_history_project_id ON buffer_history(project_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_buffer_history_recorded_at ON buffer_history(recorded_at)");
+      console.log("Buffer history table created.");
+    }
+  } catch (error) {
+    console.error("CCPM migration error:", error);
+  }
+}
+
+migrateCCPMTables();
+
 export function getDb() {
   return db;
 }

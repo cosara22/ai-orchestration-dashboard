@@ -19,6 +19,7 @@ const DEFAULT_PANELS: PanelConfig[] = [
   { id: "tasks", name: "Tasks", visible: true, order: 4 },
   { id: "agents", name: "Agents", visible: true, order: 5 },
   { id: "alerts", name: "Alerts", visible: true, order: 6 },
+  { id: "ccpm", name: "CCPM / WBS", visible: true, order: 7 },
 ];
 
 const STORAGE_KEY = "aod-panel-config";
