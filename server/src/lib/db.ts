@@ -762,6 +762,70 @@ function migrateMultiAgentTables() {
 
 migrateMultiAgentTables();
 
+// Auto-migrate: Create teams tables (Phase 15-F)
+function migrateTeamsTables() {
+  try {
+    // Teams table
+    const teamsExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='teams'"
+    ).get();
+
+    if (!teamsExists) {
+      console.log("Migrating: Creating teams table...");
+      db.exec(`
+        CREATE TABLE teams (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          team_id TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT,
+          project_id TEXT,
+          color TEXT DEFAULT '#6366f1',
+          lead_agent_id TEXT,
+          max_members INTEGER DEFAULT 5,
+          status TEXT DEFAULT 'active',
+          metadata TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (project_id) REFERENCES projects(project_id),
+          FOREIGN KEY (lead_agent_id) REFERENCES agents(agent_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_teams_project ON teams(project_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_teams_status ON teams(status)");
+      console.log("Teams table created.");
+    }
+
+    // Team Members table
+    const membersExists = db.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='team_members'"
+    ).get();
+
+    if (!membersExists) {
+      console.log("Migrating: Creating team_members table...");
+      db.exec(`
+        CREATE TABLE team_members (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          team_id TEXT NOT NULL,
+          agent_id TEXT NOT NULL,
+          role TEXT DEFAULT 'member',
+          joined_at TEXT DEFAULT (datetime('now')),
+          UNIQUE(team_id, agent_id),
+          FOREIGN KEY (team_id) REFERENCES teams(team_id),
+          FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
+        )
+      `);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id)");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_team_members_agent ON team_members(agent_id)");
+      console.log("Team members table created.");
+    }
+
+  } catch (error) {
+    console.error("Teams migration error:", error);
+  }
+}
+
+migrateTeamsTables();
+
 export function getDb() {
   return db;
 }

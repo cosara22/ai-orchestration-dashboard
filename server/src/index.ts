@@ -15,6 +15,8 @@ import milestonesRouter from "./routes/milestones";
 import { queueRouter } from "./routes/queue";
 import { locksRouter } from "./routes/locks";
 import { contextRouter } from "./routes/context";
+import { conductorRouter } from "./routes/conductor";
+import { teamsRouter } from "./routes/teams";
 import { wsHandler } from "./ws/handler";
 import { authMiddleware, isAuthEnabled } from "./middleware/auth";
 
@@ -58,6 +60,8 @@ app.route("/api/milestones", milestonesRouter);
 app.route("/api/queue", queueRouter);
 app.route("/api/locks", locksRouter);
 app.route("/api/context", contextRouter);
+app.route("/api/conductor", conductorRouter);
+app.route("/api/teams", teamsRouter);
 
 // WebSocket upgrade is handled at Bun.serve level
 

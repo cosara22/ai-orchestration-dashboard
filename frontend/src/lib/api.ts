@@ -235,6 +235,73 @@ export interface CapabilityTag {
   description: string | null;
 }
 
+// Conductor Types (Phase 15-E)
+export interface ConductorAgentStatus {
+  agent_id: string;
+  name: string;
+  status: string;
+  current_workload: number;
+  current_task_id: string | null;
+  current_task_title: string | null;
+  last_heartbeat: string;
+}
+
+export interface ConductorBlockedTask {
+  task_id: string;
+  title: string;
+  blocked_by: string;
+  blocked_reason: string;
+  assigned_to: string | null;
+  agent_name: string | null;
+}
+
+export interface ConductorBottleneck {
+  type: "agent_overload" | "capability_gap" | "dependency_chain" | "lock_contention" | "queue_stall" | "communication_gap";
+  severity: "low" | "medium" | "high" | "critical";
+  description: string;
+  affected_items: string[];
+  suggested_action: string;
+  metrics?: Record<string, number>;
+}
+
+export interface ConductorRisk {
+  type: "deadline" | "quality" | "resource" | "dependency";
+  probability: "low" | "medium" | "high";
+  impact: "low" | "medium" | "high" | "critical";
+  description: string;
+  mitigation: string;
+}
+
+export interface ConductorProjectStatus {
+  project_id: string;
+  project_name: string;
+  overall_progress: number;
+  health: "good" | "warning" | "critical";
+  active_agents: ConductorAgentStatus[];
+  queued_tasks: number;
+  in_progress_tasks: number;
+  completed_tasks: number;
+  failed_tasks: number;
+  blocked_tasks: ConductorBlockedTask[];
+  bottlenecks: ConductorBottleneck[];
+  risks: ConductorRisk[];
+  active_locks: number;
+  unresolved_conflicts: number;
+  recent_contexts: number;
+  estimated_completion: string | null;
+}
+
+export interface ConductorDecision {
+  decision_id: string;
+  project_id: string;
+  decision_type: string;
+  description: string;
+  affected_tasks: string[];
+  affected_agents: string[];
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
 export const api = {
   // Events
   getEvents: (params?: { limit?: number; offset?: number; event_type?: string; project?: string; session_id?: string }) => {
@@ -1090,7 +1157,255 @@ export const api = {
       active_blockers: number;
     }>(`/api/context/stats/summary${query}`);
   },
+
+  // Conductor API (Phase 15-E)
+  getConductorStatus: (projectId: string) =>
+    fetchApi<ConductorProjectStatus>(`/api/conductor/status/${projectId}`),
+
+  getConductorOverview: () =>
+    fetchApi<{
+      projects: Array<{
+        project_id: string;
+        name: string;
+        status: string;
+        agent_count: number;
+        progress: number;
+        queued_tasks: number;
+        in_progress_tasks: number;
+        completed_tasks: number;
+        blocked_tasks: number;
+        health: "good" | "warning" | "critical";
+      }>;
+      total_active_agents: number;
+      total_pending_tasks: number;
+      total_active_locks: number;
+    }>("/api/conductor/overview"),
+
+  decomposeTasks: (data: {
+    project_id: string;
+    parent_task_id?: string;
+    subtasks: Array<{
+      title: string;
+      description?: string;
+      priority?: number;
+      estimated_minutes?: number;
+      required_capabilities?: string[];
+      dependencies?: string[];
+    }>;
+    auto_assign?: boolean;
+  }) =>
+    fetchApi<{
+      success: boolean;
+      decision_id: string;
+      created_tasks: Array<{ task_id: string; title: string; priority: number }>;
+    }>("/api/conductor/decompose", { method: "POST", body: JSON.stringify(data) }),
+
+  reallocateTasks: (data: {
+    project_id?: string;
+    task_ids: string[];
+    from_agent_id?: string;
+    to_agent_id: string;
+    reason?: string;
+  }) =>
+    fetchApi<{
+      success: boolean;
+      decision_id: string;
+      reallocated_count: number;
+      reallocated_tasks: string[];
+    }>("/api/conductor/reallocate", { method: "POST", body: JSON.stringify(data) }),
+
+  escalateIssue: (data: {
+    project_id: string;
+    issue_type: "blocker" | "conflict" | "delay" | "quality";
+    description: string;
+    affected_tasks?: string[];
+    affected_agents?: string[];
+    severity?: "low" | "medium" | "high" | "critical";
+    suggested_actions?: string[];
+  }) =>
+    fetchApi<{ success: boolean; escalation_id: string; alert_id: string }>(
+      "/api/conductor/escalate",
+      { method: "POST", body: JSON.stringify(data) }
+    ),
+
+  requestIntervention: (data: {
+    project_id: string;
+    request_type: string;
+    description: string;
+    urgency?: "normal" | "urgent" | "critical";
+    context?: Record<string, any>;
+    requester_agent_id?: string;
+  }) =>
+    fetchApi<{ success: boolean; intervention_id: string; alert_id: string }>(
+      "/api/conductor/request-intervention",
+      { method: "POST", body: JSON.stringify(data) }
+    ),
+
+  getConductorDecisions: (params?: {
+    project_id?: string;
+    type?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.type) searchParams.set("type", params.type);
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
+    const query = searchParams.toString();
+    return fetchApi<{
+      decisions: ConductorDecision[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/api/conductor/decisions${query ? `?${query}` : ""}`);
+  },
+
+  overrideDecision: (data: {
+    decision_id: string;
+    override_action: string;
+    reason?: string;
+    operator?: string;
+  }) =>
+    fetchApi<{ success: boolean; override_id: string }>("/api/conductor/override", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Teams API (Phase 15-F)
+  getTeams: (params?: { project_id?: string; status?: string; limit?: number; offset?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
+    const query = searchParams.toString();
+    return fetchApi<{ teams: Team[]; total: number; limit: number; offset: number }>(
+      `/api/teams${query ? `?${query}` : ""}`
+    );
+  },
+
+  createTeam: (data: {
+    name: string;
+    description?: string;
+    project_id?: string;
+    color?: string;
+    lead_agent_id?: string;
+    max_members?: number;
+    metadata?: Record<string, any>;
+  }) =>
+    fetchApi<{ success: boolean; team: Team }>("/api/teams", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getTeam: (teamId: string) => fetchApi<TeamWithMembers>(`/api/teams/${teamId}`),
+
+  updateTeam: (teamId: string, updates: Partial<{
+    name: string;
+    description: string;
+    project_id: string;
+    color: string;
+    lead_agent_id: string;
+    max_members: number;
+    status: string;
+    metadata: Record<string, any>;
+  }>) =>
+    fetchApi<{ success: boolean; team: Team }>(`/api/teams/${teamId}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }),
+
+  deleteTeam: (teamId: string) =>
+    fetchApi<{ success: boolean; deleted: string }>(`/api/teams/${teamId}`, {
+      method: "DELETE",
+    }),
+
+  getTeamMembers: (teamId: string) =>
+    fetchApi<{ team_id: string; members: TeamMember[]; total: number }>(`/api/teams/${teamId}/members`),
+
+  addTeamMember: (teamId: string, agentId: string, role?: string) =>
+    fetchApi<{ success: boolean; team_id: string; agent_id: string; role: string }>(
+      `/api/teams/${teamId}/members`,
+      { method: "POST", body: JSON.stringify({ agent_id: agentId, role }) }
+    ),
+
+  removeTeamMember: (teamId: string, agentId: string) =>
+    fetchApi<{ success: boolean; team_id: string; agent_id: string }>(
+      `/api/teams/${teamId}/members/${agentId}`,
+      { method: "DELETE" }
+    ),
+
+  updateTeamMemberRole: (teamId: string, agentId: string, role: string) =>
+    fetchApi<{ success: boolean; team_id: string; agent_id: string; role: string }>(
+      `/api/teams/${teamId}/members/${agentId}`,
+      { method: "PATCH", body: JSON.stringify({ role }) }
+    ),
+
+  getTeamsOverview: () =>
+    fetchApi<{
+      teams: TeamWithStats[];
+      summary: {
+        total_teams: number;
+        total_agents: number;
+        assigned_agents: number;
+        unassigned_agents: number;
+      };
+    }>("/api/teams/overview/all"),
 };
+
+// Team Types (Phase 15-F)
+export interface Team {
+  id: number;
+  team_id: string;
+  name: string;
+  description: string | null;
+  project_id: string | null;
+  color: string;
+  lead_agent_id: string | null;
+  max_members: number;
+  status: string;
+  metadata: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamMember {
+  id: number;
+  team_id: string;
+  agent_id: string;
+  role: string;
+  joined_at: string;
+  agent_name?: string;
+  agent_status?: string;
+  agent_type?: string;
+  last_heartbeat?: string;
+  current_workload?: number;
+}
+
+export interface TeamWithMembers extends Team {
+  members: TeamMember[];
+  member_count: number;
+  lead_name?: string;
+  stats?: {
+    active_agents: number;
+    idle_agents: number;
+    tasks?: {
+      total: number;
+      completed: number;
+      in_progress: number;
+      pending: number;
+    };
+  };
+}
+
+export interface TeamWithStats extends Team {
+  member_count: number;
+  lead_name?: string;
+  completed_tasks: number;
+  in_progress_tasks: number;
+  project_name?: string;
+}
 
 // CCPM/WBS Types
 export interface CCPMProject {
