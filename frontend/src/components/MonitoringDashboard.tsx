@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { HourlyActivityChart } from "./HourlyActivityChart";
 
 interface SystemMetrics {
   timestamp: string;
@@ -315,6 +316,9 @@ export default function MonitoringDashboard() {
           </div>
         </div>
       )}
+
+      {/* Hourly Activity Chart */}
+      <HourlyActivityChart />
 
       {/* Shared Context Stats */}
       {metrics && (

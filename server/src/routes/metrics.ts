@@ -176,6 +176,84 @@ metricsRouter.get("/timeline", async (c) => {
   }
 });
 
+// GET /api/metrics/hourly-activity - Get hourly activity aggregation (0-23 hours)
+metricsRouter.get("/hourly-activity", async (c) => {
+  try {
+    const db = getDb();
+    const days = parseInt(c.req.query("days") || "7");
+
+    // Get event counts by hour of day (0-23)
+    const eventsByHour = db
+      .prepare(`
+        SELECT
+          CAST(strftime('%H', timestamp) AS INTEGER) as hour_of_day,
+          COUNT(*) as event_count
+        FROM events
+        WHERE timestamp > datetime('now', '-' || ? || ' days')
+        GROUP BY hour_of_day
+        ORDER BY hour_of_day ASC
+      `)
+      .all(days);
+
+    // Get task completions by hour of day
+    const tasksByHour = db
+      .prepare(`
+        SELECT
+          CAST(strftime('%H', completed_at) AS INTEGER) as hour_of_day,
+          COUNT(*) as task_count
+        FROM task_queue
+        WHERE completed_at IS NOT NULL
+          AND completed_at > datetime('now', '-' || ? || ' days')
+        GROUP BY hour_of_day
+        ORDER BY hour_of_day ASC
+      `)
+      .all(days);
+
+    // Get tool executions by hour of day
+    const toolsByHour = db
+      .prepare(`
+        SELECT
+          CAST(strftime('%H', start_time) AS INTEGER) as hour_of_day,
+          COUNT(*) as tool_count
+        FROM tool_executions
+        WHERE start_time > datetime('now', '-' || ? || ' days')
+        GROUP BY hour_of_day
+        ORDER BY hour_of_day ASC
+      `)
+      .all(days);
+
+    // Build complete hourly data (0-23)
+    const hourlyData = [];
+    for (let hour = 0; hour < 24; hour++) {
+      const eventData = (eventsByHour as any[]).find((e: any) => e.hour_of_day === hour);
+      const taskData = (tasksByHour as any[]).find((t: any) => t.hour_of_day === hour);
+      const toolData = (toolsByHour as any[]).find((t: any) => t.hour_of_day === hour);
+
+      hourlyData.push({
+        hour,
+        events: eventData?.event_count || 0,
+        tasks: taskData?.task_count || 0,
+        tools: toolData?.tool_count || 0,
+        total: (eventData?.event_count || 0) + (taskData?.task_count || 0) + (toolData?.tool_count || 0),
+      });
+    }
+
+    return c.json({
+      days,
+      hourly_activity: hourlyData,
+      summary: {
+        total_events: hourlyData.reduce((sum, h) => sum + h.events, 0),
+        total_tasks: hourlyData.reduce((sum, h) => sum + h.tasks, 0),
+        total_tools: hourlyData.reduce((sum, h) => sum + h.tools, 0),
+        peak_hour: hourlyData.reduce((max, h) => h.total > max.total ? h : max, hourlyData[0]).hour,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching hourly activity:", error);
+    return c.json({ error: "Failed to fetch hourly activity" }, 500);
+  }
+});
+
 // GET /api/metrics/health - System health check
 metricsRouter.get("/health", async (c) => {
   try {
