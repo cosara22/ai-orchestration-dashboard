@@ -107,8 +107,7 @@ export function AgentDetail({ agent, isOpen, onClose, onUpdate, onDelete }: Agen
     }
   };
 
-  const status = statusConfig[agent.status as keyof typeof statusConfig] || statusConfig.idle;
-  const StatusIcon = status.icon;
+  const StatusIcon = statusConfig[agent.status].icon;
   const typeInfo = typeConfig[agent.type] || typeConfig.default;
   const TypeIcon = typeInfo.icon;
   const metrics = agent.metrics || {};
@@ -130,10 +129,10 @@ export function AgentDetail({ agent, isOpen, onClose, onUpdate, onDelete }: Agen
           <div
             className={cn(
               "rounded-full p-3",
-              status.bgColor
+              statusConfig[agent.status].bgColor
             )}
           >
-            <Bot className={cn("h-8 w-8", status.color)} />
+            <Bot className={cn("h-8 w-8", statusConfig[agent.status].color)} />
           </div>
           <div className="flex-1">
             {isEditing ? (
@@ -150,12 +149,12 @@ export function AgentDetail({ agent, isOpen, onClose, onUpdate, onDelete }: Agen
               <span
                 className={cn(
                   "inline-flex items-center gap-1.5 px-2 py-1 rounded text-sm",
-                  status.bgColor,
-                  status.color
+                  statusConfig[agent.status].bgColor,
+                  statusConfig[agent.status].color
                 )}
               >
                 <StatusIcon className="h-4 w-4" />
-                {status.label}
+                {statusConfig[agent.status].label}
               </span>
               <span className="flex items-center gap-1.5 text-sm text-theme-secondary">
                 <TypeIcon className="h-4 w-4" />

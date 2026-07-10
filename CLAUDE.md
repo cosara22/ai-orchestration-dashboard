@@ -69,17 +69,6 @@ cd frontend && npm run dev
 ### マルチエージェント作業フロー
 
 ```
-0. エージェント起動時（最初に必ず実行）
-   # エージェント登録
-   curl -X POST http://localhost:4000/api/agents \
-     -H "Content-Type: application/json" \
-     -d '{"name": "エージェント名", "type": "implementation", "status": "active"}'
-
-   # 能力登録（agent_idはレスポンスから取得）
-   curl -X POST http://localhost:4000/api/capabilities/agent/{agent_id} \
-     -H "Content-Type: application/json" \
-     -d '{"capabilities": [{"capability": "typescript", "proficiency": 5}]}'
-
 1. タスク受領
    /task-queue claim --id=xxx
    /shared-context for-me
@@ -104,15 +93,6 @@ cd frontend && npm run dev
    /task-queue complete
    /record-milestone task_complete
 ```
-
-### エージェント種別と登録コマンド
-
-| エージェント | type | capabilities |
-|-------------|------|--------------|
-| Conductor | orchestrator | planning, coordination, review |
-| Backend Developer | implementation | typescript, backend, hono, api |
-| Frontend Developer | implementation | typescript, react, nextjs, tailwind |
-| Tester | testing | testing, e2e, playwright |
 
 ## API エンドポイント
 

@@ -258,7 +258,7 @@ export function AgentPanel({ agents, counts, onAgentsChange }: AgentPanelProps) 
         ) : (
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
             {filteredAgents.map((agent) => {
-              const status = statusConfig[agent.status as keyof typeof statusConfig] || statusConfig.idle;
+              const status = statusConfig[agent.status];
               const StatusIcon = status.icon;
               const typeInfo = typeConfig[agent.type] || typeConfig.default;
               const TypeIcon = typeInfo.icon;
